@@ -1,0 +1,11 @@
+{
+  "name": "abarrotes-la-luna",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sitio de Abarrotes La Luna con catálogo, promociones, pedidos y seguimiento conectados a Google Apps Script.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.mjs && node --test tests/*.test.mjs",
+    "serve": "python3 -m http.server 8080 --directory web"
+  }
+}

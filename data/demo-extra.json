@@ -1,0 +1,44 @@
+{
+ "_nota": "Datos SOLO para el modo demostración (web sin Apps Script conectado). Precios, licores, temporada y promociones son de EJEMPLO.",
+ "config": {
+  "tienda_nombre": "Abarrotes La Luna",
+  "pedidos_activos": "SI",
+  "envio_costo": "",
+  "envio_gratis_desde": "",
+  "pedido_minimo": "",
+  "colonias_cobertura": "",
+  "permitir_recoger": "SI",
+  "pago_efectivo": "SI",
+  "pago_transferencia": "SI",
+  "transferencia_datos": "Banco: [CONFIRMAR]\nTitular: [CONFIRMAR]\nCLABE: [CONFIRMAR]",
+  "aviso_general": "",
+  "aviso_alcohol": "La venta de bebidas alcohólicas es exclusiva para mayores de 18 años. Se pedirá identificación al entregar. Sujeto a horarios y disposiciones de ley seca."
+ },
+ "destacados": ["lala-entera", "danonino-maxi", "philadelphia-mediano", "pizza-pepperoni", "yoplait-fresa-900-g", "crema-1-2-l"],
+ "precios": {
+  "lala-entera": 31, "lala-light": 31, "lala-deslactosada": 33, "lala-semi": 31, "leche-fresca": 30,
+  "danonino-maxi": 14, "danonino-lunch": 12, "activia-fresa": 18, "activia-ciruela": 18,
+  "philadelphia-mediano": 52, "philadelphia-grande": 79, "queso-manchego": 48, "queso-amarillo": 39,
+  "pizza-pepperoni": 89, "pizza-hawaiana": 89, "dedos-de-queso": 75,
+  "yoplait-fresa-900-g": 46, "yoplait-natural-900-g": 46, "yoplait-durazno-900-g": 46,
+  "crema-1-4-l": 22, "crema-1-2-l": 38, "crema-900-ml": 62, "salchicha-fud-viena": 45, "salchicha-fud-pavo": 49,
+  "yomi-chocolate-1-l": 32, "yomi-chocolate-1-4-l": 13
+ },
+ "productos": [
+  {"id": "ejemplo-cerveza-clara", "nombre": "Cerveza clara (ejemplo)", "categoria": "Licores", "marca": "", "presentacion": "Lata 355 ml", "precio": 22, "imagen": "", "descripcion": "", "visible": "SI", "disponible": "SI", "destacado": "NO", "es_alcohol": "SI", "temporada": "", "orden": 900},
+  {"id": "ejemplo-six-cerveza", "nombre": "Six de cerveza (ejemplo)", "categoria": "Licores", "marca": "", "presentacion": "6 × 355 ml", "precio": 120, "imagen": "", "descripcion": "", "visible": "SI", "disponible": "SI", "destacado": "NO", "es_alcohol": "SI", "temporada": "", "orden": 901},
+  {"id": "ejemplo-tequila-blanco", "nombre": "Tequila blanco (ejemplo)", "categoria": "Licores", "marca": "", "presentacion": "750 ml", "precio": null, "imagen": "", "descripcion": "", "visible": "SI", "disponible": "SI", "destacado": "NO", "es_alcohol": "SI", "temporada": "", "orden": 902},
+  {"id": "ejemplo-pan-de-muerto", "nombre": "Pan de muerto (ejemplo)", "categoria": "Temporada", "marca": "", "presentacion": "Pieza", "precio": 35, "imagen": "", "descripcion": "", "visible": "SI", "disponible": "SI", "destacado": "SI", "es_alcohol": "NO", "temporada": "muertos-2026", "orden": 950},
+  {"id": "ejemplo-chocolate-mesa", "nombre": "Chocolate de mesa (ejemplo)", "categoria": "Temporada", "marca": "", "presentacion": "Tableta", "precio": 48, "imagen": "", "descripcion": "", "visible": "SI", "disponible": "SI", "destacado": "NO", "es_alcohol": "NO", "temporada": "muertos-2026", "orden": 951},
+  {"id": "ejemplo-veladora", "nombre": "Veladora (ejemplo)", "categoria": "Temporada", "marca": "", "presentacion": "Vaso", "precio": null, "imagen": "", "descripcion": "", "visible": "SI", "disponible": "SI", "destacado": "NO", "es_alcohol": "NO", "temporada": "muertos-2026", "orden": 952}
+ ],
+ "promociones": [
+  {"id": "promo-ejemplo-2x1", "titulo": "EJEMPLO · 2x1 en Danonino", "descripcion": "Llévate 2 y paga 1 en Danonino Maxi y Lunch.", "tipo": "NXM", "valor": null, "lleva": 2, "paga": 1, "aplica_a": "danonino-maxi,danonino-lunch", "inicio": "", "fin": "", "activa": true, "imagen": ""},
+  {"id": "promo-ejemplo-lala", "titulo": "EJEMPLO · 10% en leche", "descripcion": "Descuento en toda la categoría Leche.", "tipo": "PORCENTAJE", "valor": 10, "lleva": null, "paga": null, "aplica_a": "cat:Leche", "inicio": "", "fin": "", "activa": true, "imagen": ""},
+  {"id": "promo-ejemplo-pizza", "titulo": "EJEMPLO · Pizza a precio especial", "descripcion": "Pizza Pepperoni o Hawaiana a $79.", "tipo": "PRECIO_ESPECIAL", "valor": 79, "lleva": null, "paga": null, "aplica_a": "pizza-pepperoni,pizza-hawaiana", "inicio": "", "fin": "", "activa": true, "imagen": ""}
+ ],
+ "temporadas": [
+  {"id": "muertos-2026", "nombre": "Día de Muertos", "descripcion": "Todo para tu ofrenda: pan de muerto, chocolate, veladoras y más.", "inicio": "", "fin": "2026-11-02", "activa": true, "imagen": ""}
+ ],
+ "comentarios": []
+}

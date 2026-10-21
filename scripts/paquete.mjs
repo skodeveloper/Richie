@@ -42,4 +42,5 @@ const zip = join(dist, 'la-luna-hostgator.zip');
 rmSync(zip, { force: true });
 execFileSync('zip', ['-rqX', zip, '.'], { cwd: tmp });
 rmSync(tmp, { recursive: true, force: true });
-console.log(`✓ dist/la-luna-hostgator.zip ${apiUrl ? '(conectado a la API)' : '(modo demostración: falta API_URL)'}`);
+const conectado = /API_URL: 'https:/.test(readFileSync(join(root, 'web/assets/js/config.js'), 'utf8')) || apiUrl;
+console.log(`✓ dist/la-luna-hostgator.zip ${conectado ? '(conectado a la API)' : '(modo demostración: falta API_URL)'}`);

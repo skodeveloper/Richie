@@ -9,7 +9,7 @@
  * NO va aquí: se edita en el Google Sheet.
  */
 window.LUNA_CONFIG = {
-  API_URL: '',
+  API_URL: 'https://script.google.com/macros/s/AKfycbz0a4Rui_5ADb8rtEH8mNtAv5AltVzo_OQ7X0ESHUgLtQapCt_ITPzJw6eIxlWAOFdm/exec',
 
   negocio: {
     nombre: 'Abarrotes La Luna',

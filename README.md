@@ -17,7 +17,12 @@ apps-script/   → código del backend (se pega en Extensiones → Apps Script d
 shared/        → motor de promociones compartido (fuente única)
 data/          → catálogo inicial (desde el inventario) y datos del modo demostración
 tests/         → pruebas (npm test)
+dist/          → paquetes listos para instalar (npm run paquete)
 docs/          → guía de instalación y uso
 ```
+
+**Para instalar solo necesitas dos archivos de `dist/`:**
+- `Codigo.gs` → se pega completo en Extensiones → Apps Script del Sheet.
+- `la-luna-hostgator.zip` → se sube y extrae en `public_html` de HostGator.
 
 Instalación y uso diario: **[docs/GUIA-INSTALACION.md](docs/GUIA-INSTALACION.md)**.

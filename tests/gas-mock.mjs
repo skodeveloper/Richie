@@ -47,7 +47,7 @@ class Sheet {
   setFrozenRows() {}
 }
 
-export function createGas() {
+export function createGas({ singleFile } = {}) {
   const sheets = new Map();
   const ss = {
     getId: () => 'SS1',
@@ -110,9 +110,13 @@ export function createGas() {
     UrlFetchApp: { fetch: (url, o) => fetches.push({ url, o }) }
   };
   vm.createContext(ctx);
-  const dir = new URL('../apps-script/', import.meta.url);
-  const order = ['Promos.gs', 'Config.gs', ...readdirSync(dir).filter((f) => f.endsWith('.gs') && !['Promos.gs', 'Config.gs'].includes(f))];
-  for (const f of order) vm.runInContext(readFileSync(new URL(f, dir), 'utf8'), ctx, { filename: f });
+  if (singleFile) {
+    vm.runInContext(readFileSync(singleFile, 'utf8'), ctx, { filename: 'Codigo.gs' });
+  } else {
+    const dir = new URL('../apps-script/', import.meta.url);
+    const order = ['Promos.gs', 'Config.gs', ...readdirSync(dir).filter((f) => f.endsWith('.gs') && !['Promos.gs', 'Config.gs'].includes(f))];
+    for (const f of order) vm.runInContext(readFileSync(new URL(f, dir), 'utf8'), ctx, { filename: f });
+  }
 
   const parse = (out) => JSON.parse(out.content);
   return {

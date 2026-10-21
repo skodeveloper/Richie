@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node scripts/build.mjs && node --test tests/*.test.mjs",
-    "serve": "python3 -m http.server 8080 --directory web"
+    "serve": "python3 -m http.server 8080 --directory web",
+    "paquete": "node scripts/build.mjs && node scripts/paquete.mjs"
   }
 }

@@ -22,12 +22,9 @@ Navegador del cliente ──► Sitio en HostGator (carpeta web/)
 
 1. Entra a Google Drive con **skodev.ia@gmail.com** y crea una hoja nueva llamada **“La Luna · Panel”**.
 2. En la hoja: **Extensiones → Apps Script**.
-3. Borra el contenido de `Código.gs` y crea un archivo por cada `.gs` de la carpeta `apps-script/`,
-   **con el mismo nombre** y pegando su contenido:
-   `Promos.gs`, `Config.gs`, `Code.gs`, `Catalogo.gs`, `Pedidos.gs`, `Admin.gs`, `Comentarios.gs`,
-   `Notificaciones.gs`, `Setup.gs`, `Seed.gs`.
-   - Opcional: en ⚙️ *Configuración del proyecto* activa “Mostrar appsscript.json” y pega `appsscript.json`
-     (deja la zona horaria en `America/Mexico_City`).
+3. Borra todo lo que trae `Código.gs` y **pega completo el archivo `dist/Codigo.gs`** (es un solo archivo con
+   todo el backend).
+   - Opcional: en ⚙️ *Configuración del proyecto* pon la zona horaria en **(GMT-06:00) Ciudad de México**.
 4. Guarda (💾). Vuelve a la hoja y **recarga la página**: aparecerá el menú **🌙 La Luna**.
 5. **🌙 La Luna → 1. Configuración inicial**. Google pedirá permisos (hoja, enviar correo, conexiones
    externas): acéptalos. Si sale “Google no verificó esta app”, entra a *Configuración avanzada → Ir a…*:
@@ -44,26 +41,24 @@ Navegador del cliente ──► Sitio en HostGator (carpeta web/)
 > Cada vez que cambies el **código** del script: *Implementar → Administrar implementaciones → ✏️ →
 > Versión: Nueva versión*. Así la URL no cambia. (Cambiar datos en la hoja **no** requiere esto.)
 
-## 3. Conectar el sitio
+## 3. Conectar y subir el sitio a HostGator
 
-Abre `web/assets/js/config.js` y pega la URL:
+1. Descarga **`dist/la-luna-hostgator.zip`**.
+2. cPanel → **Administrador de archivos** → `public_html/`. Respalda lo que haya (Comprimir → descargar).
+3. **Cargar** el zip en `public_html/` → clic derecho → **Extraer**. Los archivos quedan directo en
+   `public_html/` (index.html, .htaccess, assets/, data/…). Borra el .zip después.
+4. Conéctalo a la API: en el Administrador de archivos abre `assets/js/config.js` → **Editar** y pega tu URL:
+   ```js
+   API_URL: 'https://script.google.com/macros/s/XXXXXXXX/exec',
+   ```
+   Guarda. (Mientras quede vacío, el sitio funciona en **modo demostración**: datos de ejemplo y contraseña
+   del panel `demo`. Útil para enseñarlo antes de conectar.)
+5. cPanel → **SSL/TLS Status**: confirma que el dominio tenga certificado (el `.htaccess` fuerza HTTPS).
+6. Abre `https://abarroteslaluna.com.mx`, haz un pedido de prueba y revisa que llegue el correo, que aparezca
+   en la hoja **Pedidos** y en `https://abarroteslaluna.com.mx/admin.html`.
 
-```js
-API_URL: 'https://script.google.com/macros/s/XXXXXXXX/exec',
-```
-
-Mientras `API_URL` esté vacío el sitio funciona en **modo demostración** (datos de ejemplo, pedidos solo en
-el navegador, contraseña del panel `demo`). Úsalo para enseñarlo antes de conectar.
-
-## 4. Subir a HostGator
-
-1. cPanel → **Administrador de archivos** → `public_html/`.
-2. Respalda lo que haya (descarga un .zip del sitio actual).
-3. Sube **el contenido** de la carpeta `web/` (no la carpeta en sí), incluido `.htaccess`
-   (activa “Mostrar archivos ocultos”).
-4. cPanel → **SSL/TLS Status**: confirma que el dominio tenga certificado (el `.htaccess` fuerza HTTPS).
-5. Abre `https://abarroteslaluna.com.mx`, haz un pedido de prueba y revisa que llegue el correo y que
-   aparezca en la hoja **Pedidos** y en `https://abarroteslaluna.com.mx/admin.html`.
+> ¿Regeneraste el paquete? `API_URL=https://script.google.com/macros/s/XXX/exec npm run paquete` crea el zip
+> con la URL ya puesta, y así te saltas el paso 4.
 
 ---
 
@@ -134,6 +129,7 @@ Llegan como `PENDIENTE`. En el panel → pestaña **Comentarios**: *Publicar*, *
 
 ## Desarrollo
 ```bash
+npm run paquete # genera dist/Codigo.gs (Apps Script en 1 archivo) y dist/la-luna-hostgator.zip
 npm run build   # copia shared/promos.js y regenera Seed.gs y web/data/demo.json
 npm test        # pruebas del motor de promociones y del backend (simulador de Apps Script)
 npm run serve   # sitio local en http://localhost:8080

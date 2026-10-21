@@ -1,7 +1,12 @@
 {
  "config": {
   "tienda_nombre": "Abarrotes La Luna",
+  "sitio_url": "https://abarroteslaluna.com.mx",
+  "email_notificacion": "tienda@ejemplo.com",
+  "email_cliente": "SI",
+  "notificar_comentarios": "SI",
   "pedidos_activos": "SI",
+  "mensaje_pedidos_pausados": "Por el momento no recibimos pedidos en línea. Llámanos por teléfono.",
   "envio_costo": "",
   "envio_gratis_desde": "",
   "pedido_minimo": "",
@@ -11,7 +16,13 @@
   "pago_transferencia": "SI",
   "transferencia_datos": "Banco: [CONFIRMAR]\nTitular: [CONFIRMAR]\nCLABE: [CONFIRMAR]",
   "aviso_general": "",
-  "aviso_alcohol": "La venta de bebidas alcohólicas es exclusiva para mayores de 18 años. Se pedirá identificación al entregar. Sujeto a horarios y disposiciones de ley seca."
+  "telefonos": "55 5517 0726, 55 5739 3213",
+  "whatsapp": "",
+  "direccion": "Estela 60, Col. Guadalupe Tepeyac, Alcaldía Gustavo A. Madero, CDMX",
+  "horario_semana": "8:00-23:30",
+  "horario_domingo": "9:00-23:30",
+  "aviso_alcohol": "La venta de bebidas alcohólicas es exclusiva para mayores de 18 años. Se pedirá identificación al entregar. Sujeto a horarios y disposiciones de ley seca.",
+  "crm_webhook_url": ""
  },
  "productos": [
   {

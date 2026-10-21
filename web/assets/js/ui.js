@@ -1,11 +1,11 @@
 // Piezas de interfaz comunes: encabezado, pie, barra del carrito, tarjetas de
 // producto, avisos y verificación de edad.
-import { esc, money, todayMX, qs, qsa, safeUrl } from './util.js';
+import { esc, money, todayMX, qs, qsa, safeUrl, negocio, estadoTienda } from './util.js';
 import { cart } from './cart.js';
 import { DEMO } from './api.js';
+import { iconoCategoria, iconoSvg, tinte } from './icons.js';
 
 const P = window.LunaPromos;
-const N = window.LUNA_CONFIG.negocio;
 
 const NAV = [
   ['index.html', 'Inicio'],
@@ -13,38 +13,18 @@ const NAV = [
   ['promociones.html', 'Promociones'],
   ['temporada.html', 'Temporada'],
   ['licores.html', 'Licores'],
-  ['seguimiento.html', 'Mi pedido'],
+  ['seguimiento.html', 'Seguir pedido'],
   ['comentarios.html', 'Opiniones']
 ];
 
 let catalogo = null;
+let relojTimer = null;
 
-export function renderChrome(active) {
-  const header = document.createElement('div');
-  header.innerHTML = `
-    ${DEMO ? `<div class="topbar demo" role="note">Modo demostración: precios, licores, temporada y promociones son de <b>ejemplo</b>. Los pedidos se guardan solo en este navegador.</div>` : ''}
-    <div class="topbar" id="aviso" hidden></div>
-    <div class="topbar" id="edit-bar" hidden></div>
-    <header class="site-header">
-      <div class="wrap">
-        <a class="brand" href="index.html" aria-label="${esc(N.nombre)}, inicio">
-          <span class="moon" aria-hidden="true"></span>
-          <span><small>ABARROTES</small>LA LUNA</span>
-        </a>
-        <nav class="nav" id="nav" aria-label="Principal">
-          ${NAV.map(([href, label]) => `<a href="${href}"${href === active ? ' aria-current="page"' : ''}>${label}</a>`).join('')}
-        </nav>
-        <a class="cart-btn" href="pedido.html" aria-label="Ver mi pedido">
-          <span aria-hidden="true">🛒</span><span class="label">Mi pedido</span><span class="count" data-cart-count>0</span>
-        </a>
-        <button class="menu-btn" type="button" aria-controls="nav" aria-expanded="false" aria-label="Abrir menú"><span></span></button>
-      </div>
-    </header>`;
-  document.body.prepend(...header.children);
+// Datos de la tienda vigentes (los del panel, cuando ya cargó el catálogo).
+export const negocioActual = () => negocio((catalogo && catalogo.config) || {});
 
-  const footer = document.createElement('footer');
-  footer.className = 'site-footer';
-  footer.innerHTML = `
+function footerHtml(N) {
+  return `
     <div class="wrap">
       <div class="cols">
         <div>
@@ -70,13 +50,64 @@ export function renderChrome(active) {
         <span>Sitio desarrollado por <a href="https://skodev.com" target="_blank" rel="noopener">Skodev</a></span>
       </div>
     </div>`;
+}
+
+function pintarEstado() {
+  const e = estadoTienda((catalogo && catalogo.config) || {});
+  qsa('[data-open-pill]').forEach((el) => {
+    el.textContent = e.texto;
+    el.classList.toggle('closed', !e.abierto);
+    el.hidden = false;
+  });
+}
+
+export function renderChrome(active) {
+  const N = negocio({});
+  const header = document.createElement('div');
+  header.innerHTML = `
+    ${DEMO ? `<div class="topbar demo" role="note">Modo demostración: precios, licores, temporada y promociones son de <b>ejemplo</b>. Los pedidos se guardan solo en este navegador.</div>` : ''}
+    <div class="topbar" id="aviso" hidden></div>
+    <div class="topbar" id="edit-bar" hidden></div>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="index.html" aria-label="${esc(N.nombre)}, inicio">
+          <span class="moon" aria-hidden="true"></span>
+          <span><small>ABARROTES</small>LA LUNA</span>
+        </a>
+        <span class="open-pill" data-open-pill hidden></span>
+        <nav class="nav" id="nav" aria-label="Principal">
+          <span class="open-pill nav-only" data-open-pill hidden></span>
+          ${NAV.map(([href, label]) => `<a href="${href}"${href === active ? ' aria-current="page"' : ''}>${label}</a>`).join('')}
+        </nav>
+        <a class="cart-btn" href="pedido.html" aria-label="Ver mi carrito">
+          <span aria-hidden="true">🛒</span><span class="label">Carrito</span><span class="count" data-cart-count>0</span>
+        </a>
+        <button class="menu-btn" type="button" aria-controls="nav" aria-expanded="false" aria-label="Abrir menú"><span></span></button>
+      </div>
+    </header>`;
+  document.body.prepend(...header.children);
+
+  const footer = document.createElement('footer');
+  footer.className = 'site-footer';
+  footer.id = 'site-footer';
+  footer.innerHTML = footerHtml(N);
   document.body.append(footer);
+
+  const wa = document.createElement('a');
+  wa.className = 'wa-fab';
+  wa.id = 'wa-fab';
+  wa.target = '_blank';
+  wa.rel = 'noopener';
+  wa.hidden = true;
+  wa.setAttribute('aria-label', 'Escríbenos por WhatsApp');
+  wa.innerHTML = '<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>';
+  if (active !== 'admin.html') document.body.append(wa);
 
   const bar = document.createElement('a');
   bar.className = 'cart-bar';
   bar.href = 'pedido.html';
   bar.id = 'cart-bar';
-  bar.innerHTML = '<span class="sum"></span><span class="go">Ver mi pedido →</span>';
+  bar.innerHTML = '<span class="sum"></span><span class="go">Ver carrito →</span>';
   if (active !== 'pedido.html' && active !== 'admin.html') document.body.append(bar);
 
   const toastEl = document.createElement('div');
@@ -95,15 +126,28 @@ export function renderChrome(active) {
 
   window.addEventListener(cart.EVENT, refreshCart);
   refreshCart();
+  pintarEstado();
+  clearInterval(relojTimer);
+  relojTimer = setInterval(pintarEstado, 60000);
 }
 
 export function setCatalog(c) {
   catalogo = c;
+  const cfg = c.config || {};
   const aviso = qs('#aviso');
-  if (aviso && c.config && c.config.aviso_general) {
-    aviso.textContent = c.config.aviso_general;
-    aviso.hidden = false;
+  if (aviso) {
+    aviso.textContent = cfg.aviso_general || '';
+    aviso.hidden = !cfg.aviso_general;
   }
+  const N = negocio(cfg);
+  const footer = qs('#site-footer');
+  if (footer) footer.innerHTML = footerHtml(N);
+  const wa = qs('#wa-fab');
+  if (wa) {
+    wa.hidden = !N.whatsapp;
+    wa.href = N.whatsapp ? `https://wa.me/52${N.whatsapp}?text=${encodeURIComponent('Hola, tengo una pregunta sobre la tienda.')}` : '#';
+  }
+  pintarEstado();
   refreshCart();
 }
 
@@ -144,14 +188,11 @@ function refreshCart() {
   qsa('.card[data-id]').forEach((card) => {
     const actions = card.querySelector('.actions');
     if (actions) actions.innerHTML = actionsHtml(card.dataset.id, card.dataset.available !== '0', card.dataset.name);
+    card.classList.toggle('in-cart', cart.qty(card.dataset.id) > 0);
   });
 }
 
 // ---------- Tarjetas de producto ----------
-
-function monogram(nombre) {
-  return esc(String(nombre || '?').trim().charAt(0).toUpperCase());
-}
 
 function actionsHtml(id, available, name) {
   if (!available) return '<button class="btn secondary small block" disabled>Agotado</button>';
@@ -175,15 +216,16 @@ export function productCard(p, promos, today = todayMX()) {
       ? `<strong>${money(p.precio - d)}</strong><s>${money(p.precio)}</s>`
       : `<strong>${money(p.precio)}</strong>`;
   }
-  const img = safeUrl(p.imagen);
+  const img = safeUrl(p.imagen) || (DEMO && /^data:image\//.test(p.imagen || '') ? p.imagen : '');
+  const icono = iconoCategoria(p.categoria, p.nombre);
   const tags = [
     promo ? `<span class="badge">${esc(P.label(promo))}</span>` : '',
     p.es_alcohol ? '<span class="badge dark">+18</span>' : '',
     !p.disponible ? '<span class="badge red">Agotado</span>' : ''
   ].join('');
-  return `<article class="card${p.disponible ? '' : ' out'}" data-id="${esc(p.id)}" data-name="${esc(p.nombre)}" data-available="${p.disponible ? 1 : 0}">
-    <div class="thumb" data-cat="${esc(p.categoria)}">
-      ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : `<span class="mono" aria-hidden="true">${monogram(p.nombre)}</span>`}
+  return `<article class="card${p.disponible ? '' : ' out'}${cart.qty(p.id) ? ' in-cart' : ''}" data-id="${esc(p.id)}" data-name="${esc(p.nombre)}" data-available="${p.disponible ? 1 : 0}">
+    <div class="thumb mini" style="background:${tinte(p.categoria)}" data-icono="${icono}">
+      ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : iconoSvg(icono, 56)}
       <div class="tags">${tags}</div>
     </div>
     <div class="body">

@@ -19,6 +19,11 @@ var CONFIG_INICIAL = [
   ['pago_transferencia', 'SI', 'Acepta transferencia.'],
   ['transferencia_datos', '', 'Banco, titular y CLABE. Se muestran al cliente al terminar su pedido.'],
   ['aviso_general', '', 'Mensaje que aparece arriba de todo el sitio (ej. "Hoy cerramos a las 20:00").'],
+  ['telefonos', '55 5517 0726, 55 5739 3213', 'Teléfonos de la tienda, separados por coma.'],
+  ['whatsapp', '', 'WhatsApp a 10 dígitos para el botón flotante del sitio. Vacío = no se muestra.'],
+  ['direccion', 'Estela 60, Col. Guadalupe Tepeyac, Alcaldía Gustavo A. Madero, CDMX', 'Dirección de la tienda.'],
+  ['horario_semana', '8:00-23:30', 'Horario de lunes a sábado (HH:MM-HH:MM o Cerrado).'],
+  ['horario_domingo', '9:00-23:30', 'Horario de domingo (HH:MM-HH:MM o Cerrado).'],
   ['aviso_alcohol', 'La venta de bebidas alcohólicas es exclusiva para mayores de 18 años. Se pedirá identificación al entregar. Sujeto a horarios y disposiciones de ley seca.', 'Texto legal en la sección de licores.'],
   ['crm_webhook_url', '', 'Opcional: URL https de Zapier/Make/HubSpot para enviar cada pedido a un CRM externo.']
 ];
@@ -71,18 +76,59 @@ function onEdit(e) {
   }
 }
 
+// Ejecútala una vez desde el editor (▶ Ejecutar) después de actualizar el código:
+// Google pide autorizar los permisos nuevos (Drive para las fotos del panel).
+function autorizarPermisos() {
+  DriveApp.getRootFolder();
+  MailApp.getRemainingDailyQuota();
+  SpreadsheetApp.getActive();
+  asegurarEstructura_();
+  console.log('Permisos listos. Ahora: Implementar → Administrar implementaciones → Nueva versión.');
+}
+
 function limpiarCache() {
   limpiarCacheCatalogo_();
   SpreadsheetApp.getActive().toast('Listo: el sitio ya muestra los cambios.', '🌙 La Luna', 4);
 }
 
+var VERSION_ESTRUCTURA = '2';
+
+// Se llama en cada petición: si el código es más nuevo que la hoja, la
+// actualiza sola (hojas, columnas y ajustes nuevos). Nadie abre el Sheet.
+function asegurarEstructura_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('ESTRUCTURA') === VERSION_ESTRUCTURA) return;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (props.getProperty('ESTRUCTURA') === VERSION_ESTRUCTURA) return;
+    prepararLibro_(libro_());
+    props.setProperty('ESTRUCTURA', VERSION_ESTRUCTURA);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function configuracionInicial() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
+  prepararLibro_(ss);
+  PropertiesService.getScriptProperties().setProperty('ESTRUCTURA', VERSION_ESTRUCTURA);
+  SpreadsheetApp.getUi().alert('🌙 Listo. Se crearon las hojas y el catálogo inicial.\n\n' +
+    'Siguiente paso: menú 🌙 La Luna → 2. Definir contraseña del panel.');
+}
 
+function prepararLibro_(ss) {
   Object.keys(COLUMNAS).forEach(function (nombre) { asegurarHoja_(ss, nombre, COLUMNAS[nombre]); });
 
-  sembrar_(ss.getSheetByName(HOJAS.CONFIG), CONFIG_INICIAL);
+  var config = ss.getSheetByName(HOJAS.CONFIG);
+  if (config.getLastRow() > 1) {
+    var existentes = {};
+    config.getRange(2, 1, config.getLastRow() - 1, 1).getValues().forEach(function (r) { existentes[String(r[0])] = true; });
+    CONFIG_INICIAL.forEach(function (c) { if (!existentes[c[0]]) config.appendRow(c); });
+  } else {
+    sembrar_(config, CONFIG_INICIAL);
+  }
   sembrar_(ss.getSheetByName(HOJAS.PRODUCTOS), SEED_PRODUCTOS.map(function (p) {
     return COLUMNAS.Productos.map(function (k) { return p[k] === undefined ? '' : p[k]; });
   }));
@@ -106,15 +152,13 @@ function configuracionInicial() {
   formatoTexto_(ss.getSheetByName(HOJAS.COMENTARIOS), ['fecha']);
   formatoTexto_(ss.getSheetByName(HOJAS.PROMOCIONES), ['inicio', 'fin']);
   formatoTexto_(ss.getSheetByName(HOJAS.TEMPORADAS), ['inicio', 'fin']);
+  formatoTexto_(config, ['valor']);
 
   ['Hoja 1', 'Sheet1', 'Hoja1'].forEach(function (n) {
     var sh = ss.getSheetByName(n);
     if (sh && sh.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(sh);
   });
-
   limpiarCacheCatalogo_();
-  SpreadsheetApp.getUi().alert('🌙 Listo. Se crearon las hojas y el catálogo inicial.\n\n' +
-    'Siguiente paso: menú 🌙 La Luna → 2. Definir contraseña del panel.');
 }
 
 function definirContrasenaPanel() {

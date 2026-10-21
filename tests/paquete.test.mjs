@@ -20,6 +20,8 @@ test('el Codigo.gs de un solo archivo funciona igual que los módulos', () => {
   assert.equal(g.get({ action: 'track', folio: r.data.folio }).data.pedido.estado, 'RECIBIDO');
   const { token } = g.post({ action: 'login', password: 'secreta123' }).data;
   assert.equal(g.post({ action: 'adminOrders', token }).data.pedidos.length, 1);
+  // Todos los módulos deben venir en el archivo único.
+  for (const action of ['adminCatalog', 'adminClients']) assert.equal(g.post({ action, token }).ok, true, action);
 });
 
 test('el zip trae el sitio en la raíz (listo para public_html)', () => {

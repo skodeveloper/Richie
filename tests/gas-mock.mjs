@@ -44,6 +44,7 @@ class Sheet {
   getRange(r, c, nr, nc) { return new Range(this, r, c, nr, nc); }
   getDataRange() { return new Range(this, 1, 1, this.getLastRow(), this.getLastColumn()); }
   appendRow(arr) { this.data.push(arr.slice()); }
+  deleteRow(r) { this.data.splice(r - 1, 1); }
   setFrozenRows() {}
 }
 
@@ -60,6 +61,7 @@ export function createGas({ singleFile } = {}) {
   const cache = new Map();
   const props = new Map();
   const mails = [];
+  const files = [];
   const fetches = [];
   const fmt = (d, tz, pattern) => {
     const p = {};
@@ -67,6 +69,14 @@ export function createGas({ singleFile } = {}) {
       .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
     return pattern.replace('yyyy', p.year).replace('yy', p.year.slice(2)).replace('MM', p.month).replace('dd', p.day)
       .replace('HH', p.hour).replace('mm', p.minute).replace('ss', p.second);
+  };
+  const folder = {
+    getId: () => 'CARPETA1',
+    createFile: (blob) => {
+      const f = { id: 'F' + (files.length + 1), blob, sharing: null };
+      files.push(f);
+      return { getId: () => f.id, setSharing: (a, p) => { f.sharing = [a, p]; } };
+    }
   };
   const validation = { requireValueInList() { return this; }, setAllowInvalid() { return this; }, build() { return {}; } };
   const ctx = {
@@ -100,13 +110,22 @@ export function createGas({ singleFile } = {}) {
       sleep: () => {},
       DigestAlgorithm: { SHA_256: 'sha256' },
       Charset: { UTF_8: 'utf8' },
-      computeDigest: (alg, s) => [...createHash(alg).update(s, 'utf8').digest()].map((b) => (b > 127 ? b - 256 : b))
+      computeDigest: (alg, s) => [...createHash(alg).update(s, 'utf8').digest()].map((b) => (b > 127 ? b - 256 : b)),
+      base64Decode: (s) => [...Buffer.from(s, 'base64')],
+      newBlob: (bytes, type, name) => ({ bytes, type, name })
+    },
+    DriveApp: {
+      Access: { ANYONE_WITH_LINK: 'ANYONE_WITH_LINK' },
+      Permission: { VIEW: 'VIEW' },
+      getFolderById: (id) => { if (id !== 'CARPETA1') throw new Error('no existe'); return folder; },
+      getRootFolder: () => folder,
+      createFolder: () => folder
     },
     ContentService: {
       MimeType: { JSON: 'json' },
       createTextOutput: (s) => ({ content: s, setMimeType() { return this; } })
     },
-    MailApp: { sendEmail: (o) => mails.push(o) },
+    MailApp: { sendEmail: (o) => mails.push(o), getRemainingDailyQuota: () => 100 },
     UrlFetchApp: { fetch: (url, o) => fetches.push({ url, o }) }
   };
   vm.createContext(ctx);
@@ -120,7 +139,7 @@ export function createGas({ singleFile } = {}) {
 
   const parse = (out) => JSON.parse(out.content);
   return {
-    ctx, ss, sheets, cache, props, mails, fetches,
+    ctx, ss, sheets, cache, props, mails, fetches, files,
     get: (params) => parse(ctx.doGet({ parameter: params })),
     post: (body) => parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } })),
     rows: (name) => {

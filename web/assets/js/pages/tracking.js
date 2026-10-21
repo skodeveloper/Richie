@@ -1,7 +1,7 @@
 // Seguimiento del pedido por folio y/o teléfono, con línea de tiempo.
 import { api, loadCatalog } from '../api.js';
 import { cart } from '../cart.js';
-import { renderChrome, setCatalog, errorBox, toast } from '../ui.js';
+import { renderChrome, setCatalog, errorBox, toast, negocioActual, productsById } from '../ui.js';
 import { esc, money, qs, normPhone, prettyDate, ESTADOS, flujoEstados, store } from '../util.js';
 
 renderChrome('seguimiento.html');
@@ -67,7 +67,8 @@ function pedidoHtml(p) {
       ${timelineHtml(p)}
       ${p.editable ? `<div class="alert ok">¿Se te olvidó algo? Puedes agregar productos mientras no confirmemos tu pedido.
         <div style="margin-top:10px"><button class="btn small" type="button" data-edit>Agregar productos</button></div></div>` : ''}
-      <p class="small muted">Se actualiza solo cada minuto. ¿Dudas? Llámanos al <a href="tel:+525555170726">55 5517 0726</a>.</p>
+      ${['ENTREGADO', 'CANCELADO'].includes(p.estado) ? `<div class="reorder"><button class="btn small secondary" type="button" data-reorder>🔁 Volver a pedir lo mismo</button></div>` : ''}
+      <p class="small muted">${['ENTREGADO', 'CANCELADO'].includes(p.estado) ? '' : 'Se actualiza solo cada minuto. '}¿Dudas? Llámanos al ${(() => { const t = negocioActual().telefonos[0]; return t ? `<a href="tel:${esc(t.tel)}">${esc(t.texto)}</a>` : 'teléfono de la tienda'; })()}.</p>
     </div>
     <aside class="panel">
       <h3>Tu pedido</h3>
@@ -122,6 +123,21 @@ form.addEventListener('submit', (e) => {
 });
 
 out.addEventListener('click', (e) => {
+  if (e.target.closest('[data-reorder]') && actual) {
+    const disponibles = productsById();
+    const items = actual.pedido.productos.filter((l) => disponibles[l.id] && disponibles[l.id].disponible);
+    if (!items.length) {
+      toast('Esos productos ya no están disponibles', 'error');
+      return;
+    }
+    if (cart.count() && !confirm('Tienes productos en tu carrito. ¿Agregamos también los de este pedido?')) return;
+    if (cart.editing()) cart.clear();
+    items.forEach((l) => cart.set(l.id, cart.qty(l.id) + l.cantidad));
+    const faltan = actual.pedido.productos.length - items.length;
+    toast(faltan ? `Agregamos ${items.length} productos (${faltan} ya no están disponibles)` : 'Listo: agregamos tu pedido anterior al carrito');
+    setTimeout(() => { location.href = 'pedido.html'; }, 900);
+    return;
+  }
   if (!e.target.closest('[data-edit]') || !actual) return;
   let tel = qs('#tel-conocido').value;
   if (!tel) {

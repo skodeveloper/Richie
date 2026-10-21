@@ -1,7 +1,7 @@
 // Portada: promociones vigentes, temporada, destacados y opiniones.
 import { api, loadCatalog } from '../api.js';
-import { renderChrome, setCatalog, productCard, skeletons } from '../ui.js';
-import { esc, qs, todayMX, prettyDate } from '../util.js';
+import { renderChrome, setCatalog, productCard, skeletons, negocioActual } from '../ui.js';
+import { esc, qs, todayMX, prettyDate, parseHorario, horaTexto } from '../util.js';
 
 const P = window.LunaPromos;
 renderChrome('index.html');
@@ -11,8 +11,20 @@ const seasonEl = qs('#home-season');
 const featEl = qs('#home-featured');
 featEl.innerHTML = `<div class="grid">${skeletons(4)}</div>`;
 
+function pintarContacto() {
+  const n = negocioActual();
+  qs('#info-horario').innerHTML = n.horario.map((h) => `<dt>${esc(h.dias)}</dt><dd>${esc(h.horas)}</dd>`).join('');
+  qs('#info-direccion').textContent = n.direccion;
+  qs('#info-telefonos').innerHTML = n.telefonos.map((t) => `<a href="tel:${esc(t.tel)}">${esc(t.texto)} <span>Llamar ↗</span></a>`).join('')
+    + (n.whatsapp ? `<a href="https://wa.me/52${esc(n.whatsapp)}" target="_blank" rel="noopener">WhatsApp <span>Escribir ↗</span></a>` : '');
+  const [semana, domingo] = [parseHorario(n.semana), parseHorario(n.domingo)];
+  qs('#strip-horario').textContent = semana && domingo && semana[1] === domingo[1]
+    ? `Lunes a domingo hasta las ${horaTexto(semana[1])}` : 'Mostrador y domicilio';
+}
+
 loadCatalog((c) => {
   setCatalog(c);
+  pintarContacto();
   const today = todayMX();
   const promos = c.promociones.filter((p) => P.isActive(p, today)).slice(0, 3);
   promosEl.closest('section').hidden = !promos.length;

@@ -29,7 +29,9 @@ Navegador del cliente ──► Sitio en HostGator (carpeta web/)
 5. **🌙 La Luna → 1. Configuración inicial**. Google pedirá permisos (hoja, enviar correo, conexiones
    externas): acéptalos. Si sale “Google no verificó esta app”, entra a *Configuración avanzada → Ir a…*:
    es tu propio script.
-6. **🌙 La Luna → 2. Definir contraseña del panel** (mínimo 8 caracteres).
+6. **🌙 La Luna → 2. Definir contraseña del panel** (mínimo 8 caracteres). Es lo único que se hace en el Sheet;
+   después la contraseña se cambia desde el panel (Ajustes).
+7. En el editor de Apps Script elige **`autorizarPermisos`** → **▶ Ejecutar** y acepta (Drive para fotos).
 
 ## 2. Publicar la API
 
@@ -62,59 +64,34 @@ Navegador del cliente ──► Sitio en HostGator (carpeta web/)
 
 ---
 
-## Uso diario (lo que hace la tienda)
+## Uso diario: todo desde el panel
 
-### Productos — hoja **Productos**
-| Columna | Qué poner |
+La tienda **no abre el Google Sheet**: administra todo en `https://SU-SITIO/admin.html`.
+El Sheet queda como base de datos interna (y respaldo) que solo Skodev revisa si hace falta.
+
+| Sección del panel | Qué hace la tienda ahí |
 |---|---|
-| `precio` | Número sin `$`. Vacío = “Precio por confirmar” (se puede pedir igual). |
-| `visible` | `NO` lo oculta del sitio. Los **cigarros vienen en NO** (ver aviso legal abajo). |
-| `disponible` | `NO` lo muestra como “Agotado”. |
-| `destacado` | `SI` lo pone en “Lo más pedido” de la portada. |
-| `es_alcohol` | `SI` = sale en **Licores**, pide confirmación +18. |
-| `temporada` | El `id` de una temporada (ej. `muertos-2026`) para que salga en esa sección. |
-| `imagen` | URL `https://` de una foto (opcional). |
+| **Pedidos** | Ve los pedidos en vivo (suena y se actualiza cada 30 s), llama o escribe por WhatsApp, avanza el estado, deja mensajes al cliente e imprime el ticket. |
+| **Productos** | Captura precios en línea (Enter = siguiente), marca agotados, oculta, destaca en portada, da de alta productos con foto. |
+| **Promociones** | Crea 2x1/3x2, % de descuento, precio especial o $ menos por pieza; elige productos, categoría, marca o toda la tienda; fechas y vista previa. |
+| **Temporadas** | Crea temporadas con fechas y elige sus productos. |
+| **Opiniones** | Publica, oculta o responde comentarios. |
+| **Clientes** | CRM: historial por cliente, ticket promedio, llamar/WhatsApp, ver sus pedidos. |
+| **Ajustes** | Pausar pedidos, envío, colonias, pagos y datos bancarios, avisos, teléfonos/WhatsApp/horario, correos, contraseña. |
 
-Para dar de alta licores: agrega renglones con `categoria` = Cerveza / Tequila / Vino…, y `es_alcohol` = `SI`.
+Las fotos que se suben desde el panel se guardan en Google Drive, en la carpeta **“La Luna · Fotos del sitio”**
+de la cuenta dueña del script, compartidas solo para ver.
 
-### Promociones — hoja **Promociones** (se aplican solas en el carrito)
-| tipo | valor / lleva / paga | Ejemplo |
-|---|---|---|
-| `PORCENTAJE` | `valor` = % | 10 → 10% de descuento |
-| `PRECIO_ESPECIAL` | `valor` = nuevo precio | 79 → la pieza a $79 |
-| `DESCUENTO_PIEZA` | `valor` = pesos menos por pieza | 5 → $5 menos c/u |
-| `NXM` | `lleva` y `paga` | 2 y 1 → 2x1; 3 y 2 → 3x2 |
+## Actualizar desde la versión anterior (sin perder datos)
 
-`aplica_a`: ids separados por coma (`danonino-maxi,danonino-lunch`), una categoría (`cat:Leche`),
-una marca (`marca:Lala`) o `*` para todo. `inicio`/`fin` opcionales (`2026-11-02` o `02/11/2026`).
-`activa` = `SI`. Por producto se aplica la mejor promoción (no se acumulan). Se necesita `precio` para descontar.
-
-### Temporadas — hoja **Temporadas**
-Crea la temporada (`id`, `nombre`, fechas, `activa` = `SI`) y en **Productos** pon ese `id` en la columna `temporada`.
-
-### Configuración — hoja **Config**
-Envío (`envio_costo`, `envio_gratis_desde`), `pedido_minimo`, `colonias_cobertura`, formas de pago,
-`transferencia_datos` (banco/CLABE que ve el cliente al terminar), `aviso_general` (banner arriba del sitio),
-`pedidos_activos` = `NO` para pausar pedidos, y `email_notificacion`.
-
-Los cambios se ven en el sitio **en segundos**. Si no, **🌙 La Luna → Publicar cambios ya**.
-
-### Pedidos y CRM
-- Cada pedido llega por **correo** y queda en la hoja **Pedidos**. La hoja **Clientes** acumula por teléfono:
-  número de pedidos, total gastado, última dirección (tu CRM).
-- Atiéndelos desde **`/admin.html`** (celular o computadora): se actualiza cada 30 s y suena al llegar uno
-  nuevo; botones de Llamar / WhatsApp / Mapa y cambio de estado en un toque.
-- Flujo: Recibido → Confirmado → En preparación → En camino / Listo para recoger → Entregado (o Cancelado).
-  El cliente lo ve en **Seguimiento** y, si dejó correo, recibe aviso.
-- Mientras esté **Recibido**, el cliente puede **agregar productos** desde Seguimiento.
-- También puedes cambiar el `estado` directo en la hoja; queda en el historial.
-- ¿Usas otro CRM (HubSpot, Zoho, Kommo…)? Pon en `crm_webhook_url` una URL de Zapier/Make y cada pedido
-  y cambio de estado se envía ahí.
-
-### Comentarios
-Llegan como `PENDIENTE`. En el panel → pestaña **Comentarios**: *Publicar*, *Ocultar* o responder.
-
----
+1. Apps Script → borra todo el contenido del archivo y pega el **`dist/Codigo.gs` nuevo** → 💾.
+2. En la barra de arriba elige la función **`autorizarPermisos`** → **▶ Ejecutar** → acepta los permisos
+   (ahora incluye Google Drive para las fotos).
+3. **Implementar → Administrar implementaciones → ✏️ → Versión: Nueva versión → Implementar.** La URL no cambia.
+4. HostGator → `public_html` → sube **`dist/la-luna-hostgator.zip`** → **Extraer** (reemplazar archivos).
+   Opcional: borra `assets/js/pages/admin.js`, que ya no se usa.
+5. La primera visita al sitio actualiza solas las hojas (ajustes nuevos: teléfonos, WhatsApp, horario…).
+   Los productos, pedidos y clientes existentes no se tocan.
 
 ## Avisos importantes
 - **Tabaco:** la Ley General para el Control del Tabaco y su reglamento prohíben publicidad y promoción de

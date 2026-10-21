@@ -32,7 +32,9 @@ function renderFiltered(c, productos, { allLabel = 'Todo', extraChips = '' } = {
   const cats = [...new Set(productos.map((p) => p.categoria))].sort((a, b) => a.localeCompare(b, 'es'));
   const destacados = productos.some((p) => p.destacado);
   if (state.cat && state.cat !== '__destacados' && !cats.includes(state.cat)) state.cat = '';
-  const chip = (value, label) => `<button class="chip" type="button" data-cat="${esc(value)}" aria-pressed="${state.cat === value}">${esc(label)}</button>`;
+  const cuenta = (value) => (value === '' ? productos.length : value === '__destacados'
+    ? productos.filter((p) => p.destacado).length : productos.filter((p) => p.categoria === value).length);
+  const chip = (value, label) => `<button class="chip" type="button" data-cat="${esc(value)}" aria-pressed="${state.cat === value}">${esc(label)}<span class="n">${cuenta(value)}</span></button>`;
 
   root.innerHTML = `
     <div class="toolbar">
@@ -75,7 +77,15 @@ function renderFiltered(c, productos, { allLabel = 'Todo', extraChips = '' } = {
   let timer;
   qs('#q').oninput = (e) => {
     clearTimeout(timer);
-    timer = setTimeout(() => { state.q = e.target.value.trim(); paint(); }, 150);
+    timer = setTimeout(() => {
+      state.q = e.target.value.trim();
+      // Al buscar se busca en toda la tienda, no solo en la categoría elegida.
+      if (state.q && state.cat) {
+        state.cat = '';
+        root.querySelectorAll('.chips .chip[data-cat]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.cat === '')));
+      }
+      paint();
+    }, 150);
   };
   paint();
 }

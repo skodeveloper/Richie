@@ -73,3 +73,65 @@ export const store = {
     try { localStorage.removeItem(key); } catch (e) { /* almacenamiento no disponible */ }
   }
 };
+
+// ---------- Datos de la tienda y horario (editables desde el panel) ----------
+
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+// "8:00-23:30" → [480, 1410]; "Cerrado" o inválido → null
+export function parseHorario(s) {
+  const m = String(s || '').match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return [Number(m[1]) * 60 + Number(m[2]), Number(m[3]) * 60 + Number(m[4])];
+}
+
+export const horaTexto = (min) => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
+
+export function rangoTexto(s) {
+  const h = parseHorario(s);
+  return h ? `${horaTexto(h[0])} a ${horaTexto(h[1])}` : 'Cerrado';
+}
+
+// Mezcla los datos fijos de config.js con lo que la tienda edita en el panel.
+export function negocio(config = {}) {
+  const base = window.LUNA_CONFIG.negocio;
+  const tels = String(config.telefonos || '').split(',').map((t) => t.trim()).filter(Boolean);
+  const semana = config.horario_semana || '8:00-23:30';
+  const domingo = config.horario_domingo || '9:00-23:30';
+  return {
+    ...base,
+    direccion: config.direccion || base.direccion,
+    whatsapp: normPhone(config.whatsapp) || base.whatsapp || '',
+    telefonos: tels.length
+      ? tels.map((t) => ({ texto: t, tel: '+52' + (normPhone(t) || t.replace(/\D/g, '')) }))
+      : base.telefonos,
+    semana,
+    domingo,
+    horario: [
+      { dias: 'Lunes a sábado', horas: rangoTexto(semana) },
+      { dias: 'Domingos', horas: rangoTexto(domingo) }
+    ]
+  };
+}
+
+// Estado de apertura en la hora de la Ciudad de México.
+export function estadoTienda(config = {}, ahora = new Date()) {
+  const n = negocio(config);
+  const p = {};
+  new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(ahora).forEach((x) => { p[x.type] = x.value; });
+  const dia = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday);
+  const min = Number(p.hour) * 60 + Number(p.minute);
+  const rango = (d) => parseHorario(d === 0 ? n.domingo : n.semana);
+  const hoy = rango(dia);
+  if (hoy && min >= hoy[0] && min < hoy[1]) {
+    return { abierto: true, texto: `Abierto · cierra ${horaTexto(hoy[1])}` };
+  }
+  if (hoy && min < hoy[0]) return { abierto: false, texto: `Cerrado · abre hoy ${horaTexto(hoy[0])}` };
+  for (let i = 1; i <= 7; i++) {
+    const d = (dia + i) % 7;
+    const r = rango(d);
+    if (r) return { abierto: false, texto: `Cerrado · abre ${i === 1 ? 'mañana' : 'el ' + DIAS[d]} ${horaTexto(r[0])}` };
+  }
+  return { abierto: false, texto: 'Cerrado' };
+}

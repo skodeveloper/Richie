@@ -2,8 +2,8 @@
  * API pública del sitio de Abarrotes La Luna (Apps Script como web app).
  *
  * GET  ?action=catalog | track | comments | ping
- * POST {action: createOrder | updateOrder | addComment | login | logout |
- *               adminOrders | adminUpdateOrder | adminComments | adminModerateComment}
+ * POST {action: createOrder | updateOrder | addComment | login | logout | admin*}
+ *      (las acciones admin* requieren el token de sesión del panel)
  *
  * El navegador envía los POST como text/plain para evitar la verificación
  * CORS previa, que Apps Script no soporta. Toda respuesta es {ok, data|error}.
@@ -40,6 +40,17 @@ function doPost(e) {
       case 'adminUpdateOrder': return adminActualizarPedido_(body);
       case 'adminComments': return adminComentarios_(body);
       case 'adminModerateComment': return adminModerarComentario_(body);
+      case 'adminCatalog': return adminCatalogo_(body);
+      case 'adminSaveProducts': return adminGuardarProductos_(body);
+      case 'adminDeleteProduct': return adminEliminarProducto_(body);
+      case 'adminSavePromo': return adminGuardarPromo_(body);
+      case 'adminDeletePromo': return adminEliminarPromo_(body);
+      case 'adminSaveSeason': return adminGuardarTemporada_(body);
+      case 'adminDeleteSeason': return adminEliminarTemporada_(body);
+      case 'adminSaveConfig': return adminGuardarConfig_(body);
+      case 'adminClients': return adminClientes_(body);
+      case 'adminChangePassword': return adminCambiarContrasena_(body);
+      case 'adminUploadImage': return adminSubirFoto_(body);
       default: throw new ErrorUsuario('Acción no válida.');
     }
   });
@@ -48,6 +59,7 @@ function doPost(e) {
 function responder_(fn) {
   var out;
   try {
+    asegurarEstructura_();
     out = { ok: true, data: fn() };
   } catch (err) {
     if (err instanceof ErrorUsuario) {

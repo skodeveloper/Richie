@@ -4,7 +4,7 @@
 import { api, loadCatalog } from '../api.js';
 import { cart } from '../cart.js';
 import { renderChrome, setCatalog, getCatalog, quoteCart, productsById, toast, errorBox } from '../ui.js';
-import { esc, money, qs, normPhone, isEmail, store } from '../util.js';
+import { esc, money, qs, normPhone, isEmail, store, estadoTienda } from '../util.js';
 
 const P = window.LunaPromos;
 renderChrome('pedido.html');
@@ -89,8 +89,15 @@ function stepCarrito() {
       ${e ? '<p><button class="link-btn" type="button" data-cancel-edit>Cancelar la modificación</button></p>' : ''}
     </div>`;
   }
+  const c = cfg();
+  const pausados = c.pedidos_activos !== undefined && c.pedidos_activos !== '' && !P.truthy(c.pedidos_activos);
+  const tienda = estadoTienda(c);
+  const aviso = pausados
+    ? `<div class="alert error" role="alert">${esc(c.mensaje_pedidos_pausados || 'Por el momento no recibimos pedidos en línea. Llámanos por teléfono.')}</div>`
+    : !tienda.abierto ? `<div class="alert info closed-note"><span aria-hidden="true">🌙</span><span><b>${esc(tienda.texto)}.</b> Puedes enviar tu pedido ahora: lo atendemos en cuanto abramos.</span></div>` : '';
   return `<form class="step-panel" data-step="0" novalidate>
     <h2 tabindex="-1">${e ? `Agregar a tu pedido ${esc(e.folio)}` : 'Revisa tu pedido'}</h2>
+    ${aviso}
     <p class="muted">${e ? 'Ajusta cantidades o vuelve a la tienda por más productos. Solo se puede mientras no lo confirmemos.' : 'Cambia cantidades o regresa a la tienda para agregar más. Nada se pierde.'}</p>
     ${q.faltantes.length ? `<div class="alert warn">Algunos productos ya no están disponibles y no se incluirán.
       <button class="link-btn" type="button" data-purge>Quitarlos</button></div>` : ''}
@@ -113,7 +120,7 @@ function stepCarrito() {
       </div>`).join('')}
     </div>
     ${e ? '<p><button class="link-btn" type="button" data-cancel-edit>Cancelar la modificación</button></p>' : ''}
-    ${nav({ backHref: 'tienda.html', next: e ? 'Revisar cambios →' : 'Continuar →' })}
+    ${nav({ backHref: 'tienda.html', next: e ? 'Revisar cambios →' : 'Continuar →', nextAttrs: pausados && !e ? 'disabled' : '' })}
   </form>`;
 }
 

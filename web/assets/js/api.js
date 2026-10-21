@@ -43,7 +43,18 @@ const remoteApi = {
   adminOrders: (token, filtros) => post({ action: 'adminOrders', token, ...filtros }),
   adminUpdateOrder: (token, datos) => post({ action: 'adminUpdateOrder', token, ...datos }),
   adminComments: (token) => post({ action: 'adminComments', token }),
-  adminModerateComment: (token, datos) => post({ action: 'adminModerateComment', token, ...datos })
+  adminModerateComment: (token, datos) => post({ action: 'adminModerateComment', token, ...datos }),
+  adminCatalog: (token) => post({ action: 'adminCatalog', token }),
+  adminSaveProducts: (token, datos) => post({ action: 'adminSaveProducts', token, ...datos }),
+  adminDeleteProduct: (token, datos) => post({ action: 'adminDeleteProduct', token, ...datos }),
+  adminSavePromo: (token, datos) => post({ action: 'adminSavePromo', token, ...datos }),
+  adminDeletePromo: (token, datos) => post({ action: 'adminDeletePromo', token, ...datos }),
+  adminSaveSeason: (token, datos) => post({ action: 'adminSaveSeason', token, ...datos }),
+  adminDeleteSeason: (token, datos) => post({ action: 'adminDeleteSeason', token, ...datos }),
+  adminSaveConfig: (token, datos) => post({ action: 'adminSaveConfig', token, ...datos }),
+  adminClients: (token, datos) => post({ action: 'adminClients', token, ...datos }),
+  adminChangePassword: (token, datos) => post({ action: 'adminChangePassword', token, ...datos }),
+  adminUploadImage: (token, datos) => post({ action: 'adminUploadImage', token, ...datos })
 };
 
 export const api = DEMO ? demoApi : remoteApi;

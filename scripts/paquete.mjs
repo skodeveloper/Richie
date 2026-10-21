@@ -3,7 +3,7 @@
 //   dist/la-luna-hostgator.zip → contenido de web/ para subir a public_html
 // Uso: npm run paquete
 //      API_URL=https://script.google.com/macros/s/XXX/exec npm run paquete   (deja el zip ya conectado)
-import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -14,8 +14,10 @@ mkdirSync(dist, { recursive: true });
 
 // Apps Script comparte un solo espacio global entre archivos, así que unirlos
 // en uno es equivalente. Promos y Config van primero (definen LunaPromos y ErrorUsuario).
-const ORDEN = ['Promos.gs', 'Config.gs', 'Code.gs', 'Catalogo.gs', 'Pedidos.gs', 'Admin.gs',
-  'Comentarios.gs', 'Notificaciones.gs', 'Setup.gs', 'Seed.gs'];
+// Seed (el catálogo inicial, muy largo) al final para que el código se lea primero.
+const PRIMERO = ['Promos.gs', 'Config.gs', 'Code.gs'];
+const ORDEN = [...PRIMERO, ...readdirSync(join(root, 'apps-script'))
+  .filter((f) => f.endsWith('.gs') && !PRIMERO.includes(f) && f !== 'Seed.gs').sort(), 'Seed.gs'];
 const gs = ORDEN.map((f) => {
   const src = readFileSync(join(root, 'apps-script', f), 'utf8').replace(/^\/\/ ARCHIVO GENERADO.*\n/, '');
   return `// ===================== ${f} =====================\n${src.trimEnd()}\n`;

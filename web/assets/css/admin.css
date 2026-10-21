@@ -196,3 +196,6 @@ body.admin { background: #f3f1e8; padding-bottom: 0; }
 @media (min-width: 901px) {
   .prow > .sw-wrap { display: contents; }
 }
+/* Que el foco y el desplazamiento automático no dejen campos tapados por la barra de guardado */
+html:has(.savebar.show) { scroll-padding-bottom: 110px; }
+@media (max-width: 900px) { html:has(.savebar.show) { scroll-padding-bottom: 180px; } }

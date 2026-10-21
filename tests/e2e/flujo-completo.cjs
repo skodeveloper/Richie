@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const PUERTO = 8095;
+const PUERTO = 8100 + Math.floor(Math.random() * 800);
 const B = `http://localhost:${PUERTO}/`;
 const O = process.env.E2E_CAPTURAS || '';
 const shot = (page, nombre, opts = {}) => (O ? page.screenshot({ path: path.join(O, nombre), ...opts }) : null);
@@ -24,9 +24,13 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 let paso = 0;
 const ok = (c, msg) => { if (!c) throw new Error('FALLÓ: ' + msg); console.log(`  ✓ ${msg}`); };
 
+let servidor = null;
+// El servidor se apaga siempre, también si la prueba falla (si no, sirve copias viejas).
+process.on('exit', () => { if (servidor) servidor.kill(); });
+
 (async () => {
   const sitio = prepararSitio();
-  const servidor = spawn('python3', ['-m', 'http.server', String(PUERTO), '--directory', sitio], { stdio: 'ignore' });
+  servidor = spawn('python3', ['-m', 'http.server', String(PUERTO), '--directory', sitio], { stdio: 'ignore' });
   await new Promise((r) => setTimeout(r, 800));
   const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
@@ -44,6 +48,17 @@ const ok = (c, msg) => { if (!c) throw new Error('FALLÓ: ' + msg); console.log(
   ok(await page.isVisible('.site-header [data-open-pill]'), 'pill abierto/cerrado visible');
   ok(await page.$('#home-featured .card .ico-cat'), 'tarjetas sin foto muestran ícono de categoría');
   ok((await page.textContent('.cart-btn')).includes('Carrito'), 'botón dice Carrito');
+
+  step('Carrito con productos sin precio: nunca "$0.00"');
+  await page.goto(B + 'tienda.html?q=salchicha');
+  await page.waitForSelector('.card[data-id="salchicha-1-kg"] [data-add]');
+  await page.click('.card[data-id="salchicha-1-kg"] [data-add]');
+  await page.goto(B + 'pedido.html');
+  await page.waitForSelector('.summary .totals');
+  const resumenSinPrecio = await page.textContent('.summary');
+  ok(!resumenSinPrecio.includes('$0.00') && resumenSinPrecio.includes('Por confirmar'), 'resumen dice "Por confirmar"');
+  ok(!(await page.textContent('.line .meta')).trim().startsWith('·'), 'la línea no empieza con "·"');
+  await page.click('[data-remove="salchicha-1-kg"]');
 
   step('Panel: entrar');
   await page.goto(B + 'admin.html');

@@ -164,3 +164,12 @@ test('límite anti-spam: 5 pedidos por teléfono en 10 minutos', () => {
   }
   assert.match(g.post({ action: 'createOrder', ...cliente, items: [{ id: 'bio4', cantidad: 1 }] }).error, /varios pedidos/);
 });
+
+test('pedido con productos sin precio: el correo dice "Por confirmar", nunca "$0.00"', () => {
+  const g = setup();
+  const r = g.post({ action: 'createOrder', ...cliente, items: [{ id: 'lala-entera', cantidad: 2 }] });
+  assert.equal(r.ok, true, r.error);
+  const correo = g.mails[0];
+  assert.match(correo.subject, /Por confirmar/);
+  assert.ok(!correo.htmlBody.includes('$0.00'), 'sin $0.00 en el cuerpo');
+});

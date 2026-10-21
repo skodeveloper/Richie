@@ -2,7 +2,7 @@
 import { api, loadCatalog } from '../api.js';
 import { cart } from '../cart.js';
 import { renderChrome, setCatalog, errorBox, toast, negocioActual, productsById } from '../ui.js';
-import { esc, money, qs, normPhone, prettyDate, ESTADOS, flujoEstados, store } from '../util.js';
+import { esc, money, importe, qs, normPhone, prettyDate, ESTADOS, flujoEstados, store } from '../util.js';
 
 renderChrome('seguimiento.html');
 loadCatalog(setCatalog).catch(() => {});
@@ -58,6 +58,7 @@ function timelineHtml(p) {
 function pedidoHtml(p) {
   const tel = telefonoConocido(p.folio);
   const pend = p.precios_pendientes;
+  const sinPrecio = (p.productos || []).some((l) => l.total === null || l.total === undefined);
   return `<div class="checkout" style="margin-top:28px">
     <div class="panel">
       <p class="eyebrow">Folio</p>
@@ -76,10 +77,10 @@ function pedidoHtml(p) {
         <div class="meta">${esc(l.presentacion || '')}${l.promo ? ` · <b style="color:#8a5a00">${esc(l.promo)}</b>` : ''}</div></div>
         <div class="right"><strong>${l.total === null ? 'Por confirmar' : money(l.total)}</strong></div></div>`).join('')}
       <dl class="totals" style="margin-top:14px">
-        <dt>Subtotal</dt><dd>${money(p.subtotal)}</dd>
+        <dt>Subtotal</dt><dd>${importe(p.subtotal, sinPrecio)}</dd>
         ${Number(p.descuento) ? `<dt>Promociones</dt><dd class="save">−${money(p.descuento)}</dd>` : ''}
         <dt>Envío</dt><dd>${p.entrega === 'recoger' ? '—' : money(p.envio)}</dd>
-        <dt class="total">Total${pend ? ' estimado' : ''}</dt><dd class="total">${money(p.total)}</dd>
+        <dt class="total">Total${pend ? ' estimado' : ''}</dt><dd class="total">${importe(p.total, sinPrecio)}</dd>
       </dl>
       ${pend ? '<p class="small muted">El total final se confirma por teléfono.</p>' : ''}
     </aside>
@@ -103,7 +104,7 @@ async function buscar(folio, telefono, silencioso = false) {
       out.innerHTML = `<h3 style="margin:28px 0 12px">Pedidos con ese teléfono</h3><div class="order-list">${r.pedidos.map((p) => `
         <a class="order-item" href="?folio=${encodeURIComponent(p.folio)}&telefono=${encodeURIComponent(telefono)}">
           <span><strong>${esc(p.folio)}</strong> <span class="st ${esc(p.estado)}">${esc((ESTADOS[p.estado] || {}).nombre || p.estado)}</span><br>
-          <span class="small muted">${esc(prettyDate(p.fecha))} · ${p.piezas} piezas · ${money(p.total)}</span></span><span aria-hidden="true">→</span></a>`).join('')}</div>`;
+          <span class="small muted">${esc(prettyDate(p.fecha))} · ${p.piezas} piezas · ${importe(p.total, !Number(p.total))}</span></span><span aria-hidden="true">→</span></a>`).join('')}</div>`;
     }
   } catch (e) {
     if (!silencioso) out.innerHTML = `<div style="margin-top:20px">${errorBox(e.message)}</div>`;

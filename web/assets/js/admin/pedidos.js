@@ -1,5 +1,5 @@
 // Sección Pedidos: lista en vivo, cambio de estado, mensajes y ticket para imprimir.
-import { esc, money, prettyDate, ESTADOS, flujoEstados } from '../util.js';
+import { esc, money, importe, prettyDate, ESTADOS, flujoEstados } from '../util.js';
 import { toast, debounce } from './ui.js';
 
 let main;
@@ -17,13 +17,14 @@ function siguiente(p) {
 
 function tarjeta(p) {
   const tel = esc(p.telefono);
+  const sinPrecio = (p.productos || []).some((l) => l.total === null || l.total === undefined);
   const sig = siguiente(p);
   const dir = `${p.direccion}, ${p.colonia}, Ciudad de México`;
   const nombreEstado = ESTADOS[p.estado] ? ESTADOS[p.estado].nombre : p.estado;
   return `<details class="order-card${p.estado === 'RECIBIDO' ? ' is-new' : ''}" data-folio="${esc(p.folio)}" ${abiertos.has(p.folio) ? 'open' : ''}>
     <summary>
       <span class="folio-s">${esc(p.folio)}</span>
-      <span class="who"><strong>${esc(p.nombre)}</strong> · ${money(p.total)}${p.precios_pendientes ? '*' : ''} · ${p.piezas} pzas
+      <span class="who"><strong>${esc(p.nombre)}</strong> · ${importe(p.total, sinPrecio)} · ${p.piezas} pzas
         ${p.entrega === 'recoger' ? ' · <b>Recoge en tienda</b>' : ` · ${esc(p.colonia)}`}${p.contiene_alcohol ? ' · <b>+18</b>' : ''}</span>
       <span class="st ${esc(p.estado)}">${esc(nombreEstado)}</span>
       <span class="when">${esc(prettyDate(p.fecha))}${p.actualizado && p.actualizado !== p.fecha ? ` · actualizado ${esc(prettyDate(p.actualizado))}` : ''}</span>
@@ -33,10 +34,10 @@ function tarjeta(p) {
         <ul>${(p.productos || []).map((l) => `<li>${l.cantidad} × ${esc(l.nombre)}${l.presentacion ? ` (${esc(l.presentacion)})` : ''}
           ${l.promo ? ` <b style="color:#8a5a00">${esc(l.promo)}</b>` : ''} — ${l.total === null ? '<i>sin precio</i>' : money(l.total)}</li>`).join('')}</ul>
         <dl class="totals" style="margin-top:12px;max-width:320px">
-          <dt>Subtotal</dt><dd>${money(p.subtotal)}</dd>
+          <dt>Subtotal</dt><dd>${importe(p.subtotal, sinPrecio)}</dd>
           ${Number(p.descuento) ? `<dt>Promociones</dt><dd>−${money(p.descuento)}</dd>` : ''}
           <dt>Envío</dt><dd>${p.entrega === 'recoger' ? '—' : money(p.envio)}</dd>
-          <dt class="total">Total</dt><dd class="total">${money(p.total)}</dd>
+          <dt class="total">Total</dt><dd class="total">${importe(p.total, sinPrecio)}</dd>
         </dl>
         ${p.precios_pendientes ? '<p class="small muted">* Hay importes por confirmar con el cliente.</p>' : ''}
         <button class="btn small secondary print-btn" type="button" data-print>🖨 Imprimir ticket</button>

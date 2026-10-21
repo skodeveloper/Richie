@@ -4,7 +4,7 @@
 import { api, loadCatalog } from '../api.js';
 import { cart } from '../cart.js';
 import { renderChrome, setCatalog, getCatalog, quoteCart, productsById, toast, errorBox } from '../ui.js';
-import { esc, money, qs, normPhone, isEmail, store, estadoTienda } from '../util.js';
+import { esc, money, importe, qs, normPhone, isEmail, store, estadoTienda } from '../util.js';
 
 const P = window.LunaPromos;
 renderChrome('pedido.html');
@@ -40,10 +40,10 @@ function summaryHtml() {
   return `<div class="panel">
     <h3>Resumen</h3>
     <dl class="totals">
-      <dt>${q.piezas} ${q.piezas === 1 ? 'pieza' : 'piezas'}</dt><dd>${money(q.subtotal)}</dd>
+      <dt>${q.piezas} ${q.piezas === 1 ? 'pieza' : 'piezas'}</dt><dd>${importe(q.subtotal, q.preciosPendientes)}</dd>
       ${q.descuento ? `<dt>Promociones</dt><dd class="save">−${money(q.descuento)}</dd>` : ''}
       <dt>Envío</dt><dd>${esc(envio)}</dd>
-      <dt class="total">Total${pend ? ' estimado' : ''}</dt><dd class="total">${money(q.total)}</dd>
+      <dt class="total">Total${pend ? ' estimado' : ''}</dt><dd class="total">${importe(q.total, q.preciosPendientes)}</dd>
     </dl>
     ${q.descuento ? `<p class="small" style="color:var(--ok);margin:12px 0 0">Ahorras ${money(q.descuento)} con promociones.</p>` : ''}
     ${pend ? `<p class="small muted" style="margin:12px 0 0">${q.preciosPendientes ? 'Algunos productos aún no tienen precio en línea. ' : ''}Te confirmamos el total por teléfono antes de entregar.</p>` : ''}
@@ -105,7 +105,7 @@ function stepCarrito() {
       <div class="line">
         <div>
           <div class="name">${esc(l.nombre)}</div>
-          <div class="meta">${esc(l.presentacion)}${l.precio !== null ? ` · ${money(l.precio)} c/u` : ' · Precio por confirmar'}</div>
+          <div class="meta">${[esc(l.presentacion), l.precio !== null ? `${money(l.precio)} c/u` : 'Precio por confirmar'].filter(Boolean).join(' · ')}</div>
           ${l.promo ? `<div class="promo-line">${esc(l.promo.etiqueta)} · ${esc(l.promo.titulo)}${l.descuento ? ` (−${money(l.descuento)})` : ''}</div>` : ''}
         </div>
         <div class="right">
@@ -329,7 +329,7 @@ function exito(res, e) {
     <h2 tabindex="-1">Tu folio es</h2>
     <p class="folio">${esc(res.folio)}</p>
     <p>${e ? 'Actualizamos tu pedido.' : 'Lo estamos revisando.'} Te llamaremos al <b>${esc(tel)}</b> para confirmar disponibilidad y total${c.preciosPendientes || c.envioPorConfirmar ? ' (algunos importes se confirman por teléfono)' : ''}.</p>
-    <p><strong>Total${c.preciosPendientes || c.envioPorConfirmar ? ' estimado' : ''}: ${money(c.total)}</strong></p>
+    <p><strong>Total${c.preciosPendientes || c.envioPorConfirmar ? ' estimado' : ''}: ${importe(c.total, c.preciosPendientes)}</strong></p>
     ${res.transferencia ? `<div class="alert info transfer"><strong>Datos para transferencia</strong>\n${esc(res.transferencia)}\n<span class="small">Usa tu folio ${esc(res.folio)} como concepto.</span></div>` : ''}
     <div class="step-nav" style="justify-content:center">
       <a class="btn" href="${link}">Seguir mi pedido</a>

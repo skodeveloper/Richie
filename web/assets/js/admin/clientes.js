@@ -14,14 +14,14 @@ function pintar(r) {
     <div class="kpi"><strong>${r.total}</strong><span>Clientes</span></div>
     <div class="kpi"><strong>${recurrentes}</strong><span>Compraron 2+ veces</span></div>
     <div class="kpi"><strong>${pedidos}</strong><span>Pedidos en total</span></div>
-    <div class="kpi"><strong>${pedidos ? money(total / pedidos) : '—'}</strong><span>Ticket promedio</span></div>`;
+    <div class="kpi"><strong>${pedidos && total ? money(total / pedidos) : '—'}</strong><span>Ticket promedio</span></div>`;
   main.querySelector('#clist').innerHTML = c.length ? `<table class="ctable">
     <thead><tr><th>Cliente</th><th>Colonia</th><th class="num">Pedidos</th><th class="num">Total</th><th>Último pedido</th><th></th></tr></thead>
     <tbody>${c.map((x) => `<tr>
       <td><strong>${esc(x.nombre)}</strong><br><span class="small muted">${esc(x.telefono)}${x.email ? ` · ${esc(x.email)}` : ''}</span></td>
       <td>${esc(x.colonia || '—')}</td>
       <td class="num">${x.pedidos}${x.pedidos > 1 ? ' <span class="pill ok plain" style="padding:2px 7px">frecuente</span>' : ''}</td>
-      <td class="num">${money(x.total_acumulado)}</td>
+      <td class="num">${x.total_acumulado ? money(x.total_acumulado) : '<span class="muted">Por confirmar</span>'}</td>
       <td>${esc(prettyDate(x.ultimo_pedido))}<br><span class="small muted">${esc(x.ultimo_folio)}</span></td>
       <td><div class="acts">
         <a class="btn small secondary" href="tel:+52${esc(x.telefono)}">Llamar</a>

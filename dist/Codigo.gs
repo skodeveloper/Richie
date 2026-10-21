@@ -1247,6 +1247,12 @@ function enlaceSitio_(cfg, ruta) {
   return /^https:\/\//.test(base) ? base + '/' + ruta : '';
 }
 
+// Con productos sin precio no se muestra un "$0.00" engañoso.
+function importe_(monto, pendiente) {
+  if (!pendiente) return dinero_(monto);
+  return Number(monto) > 0 ? dinero_(monto) + ' + por confirmar' : 'Por confirmar';
+}
+
 function tablaProductosHtml_(c) {
   var filas = c.lines.map(function (l) {
     return '<tr><td style="padding:6px 8px;border-bottom:1px solid #e3e3d7">' + l.cantidad + ' × ' + esc_(l.nombre) +
@@ -1255,11 +1261,11 @@ function tablaProductosHtml_(c) {
       '</td><td style="padding:6px 8px;border-bottom:1px solid #e3e3d7;text-align:right">' + dinero_(l.total) + '</td></tr>';
   }).join('');
   return '<table style="border-collapse:collapse;width:100%;font-size:14px">' + filas +
-    '<tr><td style="padding:6px 8px">Subtotal</td><td style="padding:6px 8px;text-align:right">' + dinero_(c.subtotal) + '</td></tr>' +
+    '<tr><td style="padding:6px 8px">Subtotal</td><td style="padding:6px 8px;text-align:right">' + importe_(c.subtotal, c.preciosPendientes) + '</td></tr>' +
     (c.descuento ? '<tr><td style="padding:6px 8px">Descuentos</td><td style="padding:6px 8px;text-align:right">-' + dinero_(c.descuento) + '</td></tr>' : '') +
     '<tr><td style="padding:6px 8px">Envío</td><td style="padding:6px 8px;text-align:right">' + dinero_(c.envio) + '</td></tr>' +
     '<tr><td style="padding:6px 8px"><b>Total' + (c.preciosPendientes || c.envioPorConfirmar ? ' estimado' : '') + '</b></td>' +
-    '<td style="padding:6px 8px;text-align:right"><b>' + dinero_(c.total) + '</b></td></tr></table>' +
+    '<td style="padding:6px 8px;text-align:right"><b>' + importe_(c.total, c.preciosPendientes) + '</b></td></tr></table>' +
     (c.preciosPendientes ? '<p style="font-size:12px;color:#8a5a00">Hay productos sin precio en el catálogo: el total se confirma por teléfono.</p>' : '');
 }
 
@@ -1281,7 +1287,7 @@ function notificarPedido_(pedido, cotizacion, cfg, tipo) {
         (admin ? '<p><a href="' + esc_(admin) + '">Abrir panel de pedidos</a></p>' : '') + '</div>';
       var correo = {
         to: String(cfg.email_notificacion),
-        subject: titulo + ' · ' + dinero_(cotizacion.total) + ' · ' + pedido.nombre,
+        subject: titulo + ' · ' + importe_(cotizacion.total, cotizacion.preciosPendientes) + ' · ' + pedido.nombre,
         htmlBody: html,
         name: 'Pedidos La Luna'
       };

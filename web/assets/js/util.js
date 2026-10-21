@@ -8,6 +8,12 @@ export const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => 
 const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 export const money = (n) => (n === null || n === undefined || n === '' ? 'Por confirmar' : fmt.format(Number(n)));
 
+// Importe cuando hay productos sin precio: nunca mostrar un "$0.00" engañoso.
+export function importe(monto, pendiente) {
+  if (!pendiente) return money(monto);
+  return Number(monto) > 0 ? `${money(monto)} + por confirmar` : 'Por confirmar';
+}
+
 function parts(date) {
   const p = {};
   new Intl.DateTimeFormat('en-CA', {

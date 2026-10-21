@@ -11,7 +11,7 @@ async function call(url, options) {
   try {
     res = await fetch(url, { redirect: 'follow', ...options });
   } catch (e) {
-    throw new Error('Sin conexión. Revisa tu internet e intenta de nuevo.');
+    throw new Error('No pudimos conectar con el servidor de la tienda. Intenta de nuevo en unos minutos o llámanos.');
   }
   let json;
   try {

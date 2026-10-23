@@ -37,7 +37,7 @@ function importe_(monto, pendiente) {
 
 function tablaProductosHtml_(c) {
   var filas = c.lines.map(function (l) {
-    return '<tr><td style="padding:6px 8px;border-bottom:1px solid #e3e3d7">' + l.cantidad + ' × ' + esc_(l.nombre) +
+    return '<tr><td style="padding:6px 8px;border-bottom:1px solid #e3e3d7">' + esc_(cantidadTexto_(l)) + ' ' + esc_(l.nombre) +
       (l.presentacion ? ' <small>(' + esc_(l.presentacion) + ')</small>' : '') +
       (l.promo ? ' <b style="color:#8a5a00">' + esc_(l.promo.etiqueta) + '</b>' : '') +
       '</td><td style="padding:6px 8px;border-bottom:1px solid #e3e3d7;text-align:right">' + dinero_(l.total) + '</td></tr>';

@@ -4,7 +4,7 @@
 import { api, loadCatalog } from '../api.js';
 import { cart } from '../cart.js';
 import { renderChrome, setCatalog, getCatalog, quoteCart, productsById, toast, errorBox } from '../ui.js';
-import { esc, money, importe, qs, normPhone, isEmail, store, estadoTienda } from '../util.js';
+import { esc, money, importe, cantidadTexto, qs, normPhone, isEmail, store, estadoTienda } from '../util.js';
 
 const P = window.LunaPromos;
 renderChrome('pedido.html');
@@ -26,6 +26,11 @@ const pasos = () => (edit() ? PASOS_EDICION : PASOS);
 const cfg = () => (getCatalog() && getCatalog().config) || {};
 const si = (v, def = true) => (v === undefined || v === '' ? def : P.truthy(v));
 const guardarDatos = () => store.set(DATOS_KEY, datos);
+// Con granel ("¾ kg" cuenta como 1) se habla de artículos, no de piezas.
+const piezasTexto = (q) => {
+  const [uno, varios] = q.lines.some((l) => l.unidad === 'kg') ? ['artículo', 'artículos'] : ['pieza', 'piezas'];
+  return `${q.piezas} ${q.piezas === 1 ? uno : varios}`;
+};
 
 // ---------- Resumen lateral ----------
 
@@ -40,7 +45,7 @@ function summaryHtml() {
   return `<div class="panel">
     <h3>Resumen</h3>
     <dl class="totals">
-      <dt>${q.piezas} ${q.piezas === 1 ? 'pieza' : 'piezas'}</dt><dd>${importe(q.subtotal, q.preciosPendientes)}</dd>
+      <dt>${piezasTexto(q)}</dt><dd>${importe(q.subtotal, q.preciosPendientes)}</dd>
       ${q.descuento ? `<dt>Promociones</dt><dd class="save">−${money(q.descuento)}</dd>` : ''}
       <dt>Envío</dt><dd>${esc(envio)}</dd>
       <dt class="total">Total${pend ? ' estimado' : ''}</dt><dd class="total">${importe(q.total, q.preciosPendientes)}</dd>
@@ -105,20 +110,21 @@ function stepCarrito() {
       <div class="line">
         <div>
           <div class="name">${esc(l.nombre)}</div>
-          <div class="meta">${[esc(l.presentacion), l.precio !== null ? `${money(l.precio)} c/u` : 'Precio por confirmar'].filter(Boolean).join(' · ')}</div>
+          <div class="meta">${[esc(l.presentacion), l.precio !== null ? `${money(l.precio)} ${l.unidad === 'kg' ? 'el kilo' : 'c/u'}` : 'Precio por confirmar'].filter(Boolean).join(' · ')}</div>
           ${l.promo ? `<div class="promo-line">${esc(l.promo.etiqueta)} · ${esc(l.promo.titulo)}${l.descuento ? ` (−${money(l.descuento)})` : ''}</div>` : ''}
         </div>
         <div class="right">
-          <div class="qty" role="group" aria-label="Cantidad de ${esc(l.nombre)}">
-            <button type="button" data-dec="${esc(l.id)}" aria-label="Quitar uno">−</button>
-            <output>${l.cantidad}</output>
-            <button type="button" data-inc="${esc(l.id)}" aria-label="Agregar uno">+</button>
+          <div class="qty${l.unidad === 'kg' ? ' kg' : ''}" role="group" aria-label="Cantidad de ${esc(l.nombre)}">
+            <button type="button" data-dec="${esc(l.id)}" aria-label="${l.unidad === 'kg' ? 'Quitar ¼ kg' : 'Quitar uno'}">−</button>
+            <output>${l.unidad === 'kg' ? esc(cantidadTexto(l)) : l.cantidad}</output>
+            <button type="button" data-inc="${esc(l.id)}" aria-label="${l.unidad === 'kg' ? 'Agregar ¼ kg' : 'Agregar uno'}">+</button>
           </div>
           <strong>${l.total === null ? 'Por confirmar' : money(l.total)}</strong>
           <button class="link-btn remove" type="button" data-remove="${esc(l.id)}">Quitar</button>
         </div>
       </div>`).join('')}
     </div>
+    ${q.lines.some((l) => l.unidad === 'kg') ? '<p class="granel-note">⚖️ Los productos a granel se pesan al surtir: el total final puede variar un poco.</p>' : ''}
     ${e ? '<p><button class="link-btn" type="button" data-cancel-edit>Cancelar la modificación</button></p>' : ''}
     ${nav({ backHref: 'tienda.html', next: e ? 'Revisar cambios →' : 'Continuar →', nextAttrs: pausados && !e ? 'disabled' : '' })}
   </form>`;
@@ -200,7 +206,7 @@ function stepConfirmar() {
     <h2 tabindex="-1">${e ? 'Confirma los cambios' : 'Confirma tu pedido'}</h2>
     <p class="muted">Revisa que todo esté bien. Te llamaremos para confirmar disponibilidad y total.</p>
     <div id="form-error"></div>
-    ${bloque('Productos', `${q.piezas} piezas · ${q.lines.length} productos`, 0)}
+    ${bloque('Productos', `${piezasTexto(q)} · ${q.lines.length} productos`, 0)}
     ${e ? bloque('Pedido', `Folio ${esc(e.folio)}`, null) : `
       ${bloque('Contacto', `${esc(datos.nombre)} · ${esc(datos.telefono)}${datos.email ? ` · ${esc(datos.email)}` : ''}`, 1)}
       ${bloque('Entrega', datos.entrega === 'recoger' ? 'Paso a recoger a la tienda' : `${esc(datos.direccion)}, ${esc(datos.colonia)}${datos.referencias ? ` · ${esc(datos.referencias)}` : ''}`, 2)}

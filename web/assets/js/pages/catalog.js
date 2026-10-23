@@ -14,8 +14,42 @@ root.innerHTML = `<div class="grid">${skeletons()}</div>`;
 const params = new URLSearchParams(location.search);
 const state = { cat: params.get('cat') || '', q: params.get('q') || '' };
 
-const byOrder = (a, b) => (a.orden ?? 9999) - (b.orden ?? 9999) || a.nombre.localeCompare(b.nombre, 'es');
-const grid = (list, promos) => `<div class="grid">${list.map((p) => productCard(p, promos)).join('')}</div>`;
+// Agotados al final; luego el orden de la tienda.
+const byOrder = (a, b) => (b.disponible - a.disponible) || (a.orden ?? 9999) - (b.orden ?? 9999) || a.nombre.localeCompare(b.nombre, 'es');
+
+// Con miles de productos se pinta por partes: "Ver más" agrega la siguiente.
+const PAGINA = 48;
+const paginas = new Map();
+let nGrid = 0;
+function grid(list, promos, paso = PAGINA) {
+  const id = `g${++nGrid}`;
+  paginas.set(id, { list, promos, paso, mostrados: Math.min(paso, list.length) });
+  return `<div class="grid" data-g="${id}">${list.slice(0, paso).map((p) => productCard(p, promos)).join('')}</div>${botonMas(id)}`;
+}
+function botonMas(id) {
+  const g = paginas.get(id);
+  const resto = g.list.length - g.mostrados;
+  return resto > 0 ? `<div class="more-wrap" data-more="${id}"><button class="btn secondary" type="button" data-mas="${id}">Ver más productos <span class="muted">(${resto.toLocaleString('es-MX')})</span></button></div>` : '';
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mas]');
+  const g = b && paginas.get(b.dataset.mas);
+  if (!g) return;
+  const el = document.querySelector(`.grid[data-g="${b.dataset.mas}"]`);
+  const desde = g.mostrados;
+  g.mostrados = Math.min(g.list.length, desde + g.paso);
+  el.insertAdjacentHTML('beforeend', g.list.slice(desde, g.mostrados).map((p) => productCard(p, g.promos)).join(''));
+  b.closest('.more-wrap').outerHTML = botonMas(b.dataset.mas);
+  // Lleva el foco al primer producto nuevo para quien navega con teclado.
+  const nuevo = el.children[desde] && el.children[desde].querySelector('a, button');
+  if (nuevo) nuevo.focus({ preventScroll: true });
+});
+
+const textos = new WeakMap();
+const textoDe = (p) => {
+  if (!textos.has(p)) textos.set(p, P.norm(`${p.nombre} ${p.marca} ${p.categoria} ${p.presentacion}`));
+  return textos.get(p);
+};
 
 function empty(title, text, cta = '<a class="btn" href="tienda.html">Ver la tienda</a>') {
   return `<div class="empty"><h3>${title}</h3><p class="muted">${text}</p>${cta}</div>`;
@@ -54,11 +88,12 @@ function renderFiltered(c, productos, { allLabel = 'Todo', extraChips = '' } = {
     <div id="results"></div>`;
 
   const paint = () => {
+    paginas.clear();
     const q = P.norm(state.q);
     const list = productos.filter((p) => {
       if (state.cat === '__destacados' && !p.destacado) return false;
       if (state.cat && state.cat !== '__destacados' && p.categoria !== state.cat) return false;
-      return !q || P.norm(`${p.nombre} ${p.marca} ${p.categoria} ${p.presentacion}`).includes(q);
+      return !q || textoDe(p).includes(q);
     }).sort(byOrder);
     qs('#count').textContent = `${list.length} ${list.length === 1 ? 'producto' : 'productos'}`;
     qs('#results').innerHTML = list.length
@@ -118,7 +153,7 @@ function renderPromos(c) {
       const list = visibles.filter((x) => P.matches(p, x)).sort(byOrder);
       return list.length ? `<section class="section tight" id="promo-${esc(p.id)}">
           <div class="section-head"><div><p class="eyebrow">${esc(P.label(p))}</p><h2>${esc(p.titulo)}</h2></div></div>
-          ${grid(list, c.promociones)}
+          ${grid(list, c.promociones, 24)}
         </section>` : '';
     }).join('')}
     <p class="muted small">Las promociones se aplican automáticamente en tu pedido. Por producto se aplica la mejor promoción disponible; no son acumulables. Sujetas a disponibilidad.</p>`;

@@ -6,20 +6,46 @@
 var CACHE_CATALOGO = 'catalogo_v1';
 
 function obtenerCatalogo_() {
-  var cache = CacheService.getScriptCache();
-  var guardado = cache.get(CACHE_CATALOGO);
+  var guardado = cacheLeer_(CACHE_CATALOGO);
   if (guardado) return JSON.parse(guardado);
   var data = construirCatalogo_();
   try {
-    cache.put(CACHE_CATALOGO, JSON.stringify(data), 120);
+    cacheGuardar_(CACHE_CATALOGO, JSON.stringify(data), 300);
   } catch (e) {
-    // Catálogos de más de 100 KB no caben en caché; se sirven sin ella.
+    // Si la caché falla, el catálogo se sirve directo de la hoja.
   }
   return data;
 }
 
+// CacheService acepta 100 KB por clave: el catálogo grande se guarda en partes.
+var PARTE_CACHE = 45000; // caracteres (con acentos, < 100 KB)
+
+function cacheGuardar_(clave, texto, segundos) {
+  var partes = {};
+  var n = Math.ceil(texto.length / PARTE_CACHE);
+  for (var i = 0; i < n; i++) partes[clave + '_' + i] = texto.substr(i * PARTE_CACHE, PARTE_CACHE);
+  var cache = CacheService.getScriptCache();
+  cache.putAll(partes, segundos);
+  cache.put(clave + '_n', String(n), segundos);
+}
+
+function cacheLeer_(clave) {
+  var cache = CacheService.getScriptCache();
+  var n = Number(cache.get(clave + '_n') || 0);
+  if (!n) return null;
+  var claves = [];
+  for (var i = 0; i < n; i++) claves.push(clave + '_' + i);
+  var partes = cache.getAll(claves);
+  var texto = '';
+  for (var j = 0; j < n; j++) {
+    if (partes[claves[j]] === undefined || partes[claves[j]] === null) return null;
+    texto += partes[claves[j]];
+  }
+  return texto;
+}
+
 function limpiarCacheCatalogo_() {
-  CacheService.getScriptCache().removeAll([CACHE_CATALOGO, 'comentarios_v1']);
+  CacheService.getScriptCache().removeAll([CACHE_CATALOGO + '_n', 'comentarios_v1']);
 }
 
 function construirCatalogo_() {
@@ -58,7 +84,8 @@ function normalizarProducto_(p) {
     destacado: LunaPromos.truthy(p.destacado),
     es_alcohol: LunaPromos.truthy(p.es_alcohol),
     temporada: texto_(p.temporada, 60),
-    orden: LunaPromos.num(p.orden)
+    orden: LunaPromos.num(p.orden),
+    unidad: String(p.unidad || '').toLowerCase() === 'kg' ? 'kg' : ''
   };
 }
 

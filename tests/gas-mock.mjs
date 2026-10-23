@@ -41,6 +41,7 @@ class Sheet {
   getLastRow() { return this.data.length; }
   getLastColumn() { return Math.max(0, ...this.data.map((r) => r.length)); }
   getMaxRows() { return 1000; }
+  insertRowsAfter() { return this; }
   getRange(r, c, nr, nc) { return new Range(this, r, c, nr, nc); }
   getDataRange() { return new Range(this, 1, 1, this.getLastRow(), this.getLastColumn()); }
   appendRow(arr) { this.data.push(arr.slice()); }
@@ -91,9 +92,17 @@ export function createGas({ singleFile } = {}) {
     CacheService: {
       getScriptCache: () => ({
         get: (k) => (cache.has(k) ? cache.get(k) : null),
-        put: (k, v) => { cache.set(k, String(v)); },
+        put: (k, v) => {
+          if (String(v).length > 100000) throw new Error('Argumento demasiado grande: valor de caché > 100 KB');
+          cache.set(k, String(v));
+        },
         remove: (k) => cache.delete(k),
-        removeAll: (ks) => ks.forEach((k) => cache.delete(k))
+        removeAll: (ks) => ks.forEach((k) => cache.delete(k)),
+        getAll: (ks) => Object.fromEntries(ks.filter((k) => cache.has(k)).map((k) => [k, cache.get(k)])),
+        putAll: (o) => Object.entries(o).forEach(([k, v]) => {
+          if (String(v).length > 100000) throw new Error('Argumento demasiado grande: valor de caché > 100 KB');
+          cache.set(k, String(v));
+        })
       })
     },
     PropertiesService: {

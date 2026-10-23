@@ -198,9 +198,12 @@ function cotizar_(items, entrega, cfg, mayorEdad) {
   catalogo.productos.forEach(function (p) { porId[p.id] = p; });
 
   var limpios = items.map(function (it) {
-    var cantidad = Math.floor(Number(it && it.cantidad));
-    if (!(cantidad >= 1 && cantidad <= MAX_CANTIDAD)) throw new ErrorUsuario('Cantidad no válida.');
-    var p = porId[String(it.id)];
+    var p = porId[String(it && it.id)];
+    var pedida = Number(it && it.cantidad);
+    // Piezas enteras de 1 a 99; granel en cuartos de kilo de ¼ a 25 kg.
+    var cantidad = LunaPromos.cantidadValida(p, pedida);
+    var maximo = LunaPromos.esGranel(p) ? LunaPromos.MAX_KG : MAX_CANTIDAD;
+    if (!(cantidad > 0 && cantidad === pedida && cantidad <= maximo)) throw new ErrorUsuario('Cantidad no válida.');
     if (p && !p.disponible) throw new ErrorUsuario(p.nombre + ' está agotado por ahora. Quítalo de tu pedido.');
     return { id: String(it.id), cantidad: cantidad };
   });
@@ -225,12 +228,12 @@ function cotizar_(items, entrega, cfg, mayorEdad) {
 
 function aplicarCotizacion_(destino, c) {
   destino.productos = c.lines.map(function (l) {
-    return l.cantidad + ' × ' + l.nombre + (l.presentacion ? ' (' + l.presentacion + ')' : '') +
+    return cantidadTexto_(l) + ' ' + l.nombre + (l.presentacion ? ' (' + l.presentacion + ')' : '') +
       (l.promo ? ' [' + l.promo.etiqueta + ']' : '');
   }).join('\n');
   destino.productos_json = JSON.stringify(c.lines.map(function (l) {
     return {
-      id: l.id, nombre: l.nombre, presentacion: l.presentacion, cantidad: l.cantidad, precio: l.precio,
+      id: l.id, nombre: l.nombre, presentacion: l.presentacion, cantidad: l.cantidad, unidad: l.unidad, precio: l.precio,
       descuento: l.descuento, total: l.total, promo: l.promo ? l.promo.etiqueta : '', es_alcohol: l.es_alcohol
     };
   }));

@@ -91,7 +91,7 @@ function limpiarCache() {
   SpreadsheetApp.getActive().toast('Listo: el sitio ya muestra los cambios.', '🌙 La Luna', 4);
 }
 
-var VERSION_ESTRUCTURA = '2';
+var VERSION_ESTRUCTURA = '3';
 
 // Se llama en cada petición: si el código es más nuevo que la hoja, la
 // actualiza sola (hojas, columnas y ajustes nuevos). Nadie abre el Sheet.
@@ -153,6 +153,7 @@ function prepararLibro_(ss) {
   formatoTexto_(ss.getSheetByName(HOJAS.PROMOCIONES), ['inicio', 'fin']);
   formatoTexto_(ss.getSheetByName(HOJAS.TEMPORADAS), ['inicio', 'fin']);
   formatoTexto_(config, ['valor']);
+  formatoTexto_(ss.getSheetByName(HOJAS.PRODUCTOS), ['codigo']);
 
   ['Hoja 1', 'Sheet1', 'Hoja1'].forEach(function (n) {
     var sh = ss.getSheetByName(n);

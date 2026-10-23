@@ -78,4 +78,17 @@ Marca cada prueba con ✅ o ❌ y anota lo que veas. Hazlas en el sitio real (de
 | H5 | Menú dice “Seguir pedido” y el botón “Carrito” (antes ambos decían “Mi pedido”) | |
 | H6 | Si la tienda está cerrada, el carrito avisa que el pedido se atiende al abrir | |
 
+## I. Catálogo del punto de venta y granel
+| # | Qué haces | Qué debe pasar | ✅/❌ |
+|---|---|---|---|
+| I1 | **Productos → 📥 Importar del punto de venta** → elige `CATALOGO.xlsx` | Vista previa: ~3,295 nuevos, ~3,183 a publicar, 91 cigarros y 21 internos ocultos, 605 agotados, 48 a granel | |
+| I2 | Abre “Ejemplos de cómo se verán los nombres” | Nombres limpios (sin “V ”/“F ”), presentación aparte (600 ml, 1 kg) y categoría razonable | |
+| I3 | Deja marcado “Ocultar los productos actuales…” → **Importar** | Barra de avance; al terminar, el aviso con nuevos/ocultos. Los anteriores quedan al final, en “Ocultos” | |
+| I4 | Vuelve a importar el mismo archivo | 0 nuevos, todo “Sin cambios” (no duplica) | |
+| I5 | Cambia un precio en el punto de venta, exporta e importa | Solo ese precio cambia; nombre/foto/categoría editados se respetan | |
+| I6 | En la tienda busca “frijol” o “granel” | Precio “/kg”; “Agregar ½ kg”; con + y − sube/baja de ¼ en ¼ | |
+| I7 | Pide ¾ kg y envía el pedido | El correo, el panel y el seguimiento dicen “¾ kg”; aviso de que el total se ajusta al pesar | |
+| I8 | Tienda → **Todo** | Se ven 48 productos y **Ver más** carga los siguientes; agotados al final | |
+| I9 | En una promoción, marca productos con el buscador | Encuentra por nombre, marca o código de barras entre todos los productos | |
+
 **Aprobación:** Nombre ____________________ Fecha ____________ ¿Se aprueba para grabar el video nuevo? Sí / No

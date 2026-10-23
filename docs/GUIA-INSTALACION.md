@@ -72,7 +72,7 @@ El Sheet queda como base de datos interna (y respaldo) que solo Skodev revisa si
 | Sección del panel | Qué hace la tienda ahí |
 |---|---|
 | **Pedidos** | Ve los pedidos en vivo (suena y se actualiza cada 30 s), llama o escribe por WhatsApp, avanza el estado, deja mensajes al cliente e imprime el ticket. |
-| **Productos** | Captura precios en línea (Enter = siguiente), marca agotados, oculta, destaca en portada, da de alta productos con foto. |
+| **Productos** | Importa el catálogo del punto de venta (Excel/CSV), captura precios en línea (Enter = siguiente), marca agotados, oculta, destaca en portada, da de alta productos con foto y define si se vende por pieza o por kilo. |
 | **Promociones** | Crea 2x1/3x2, % de descuento, precio especial o $ menos por pieza; elige productos, categoría, marca o toda la tienda; fechas y vista previa. |
 | **Temporadas** | Crea temporadas con fechas y elige sus productos. |
 | **Opiniones** | Publica, oculta o responde comentarios. |
@@ -81,6 +81,23 @@ El Sheet queda como base de datos interna (y respaldo) que solo Skodev revisa si
 
 Las fotos que se suben desde el panel se guardan en Google Drive, en la carpeta **“La Luna · Fotos del sitio”**
 de la cuenta dueña del script, compartidas solo para ver.
+
+## Catálogo del punto de venta (Excel)
+
+**Productos → 📥 Importar del punto de venta** → elegir el Excel exportado del punto de venta
+(columnas *Código, Producto, P. Venta, Departamento, Existencia, Tipo de Venta*) → revisar → **Importar**.
+
+- **El precio de costo nunca se lee ni se sube**: el archivo se procesa en el navegador y solo viajan
+  código, nombre, presentación, categoría, marca, precio de venta, disponibilidad y unidad.
+- Primera vez: crea los productos (nombres limpios, presentación separada y categoría asignada sola) y,
+  si se deja marcado, oculta los productos anteriores que no traen código (no se borran).
+- Las siguientes veces (mismo archivo actualizado): **solo cambia precio y disponibilidad** de los que ya
+  existen y agrega los nuevos. Lo editado en el panel (nombre, foto, categoría, destacados) se respeta.
+- Existencia **0 → Agotado**; existencia **“-”** (sin control de inventario) → disponible.
+- **Tipo de venta GRANEL → se vende por kilo**: el cliente elige ¼, ½, ¾, 1 kg…; el total se ajusta al pesar.
+- Se importan **ocultos**: cigarros (ley del tabaco) y artículos internos (bolsas, envases, importes,
+  departamentos *Materias Primas* y *La Luna*). Se pueden revisar en el filtro **Ocultos**.
+- Se envía en partes de 800 productos; si algo se interrumpe, volver a importar el mismo archivo no duplica.
 
 ## Actualizar desde la versión anterior (sin perder datos)
 

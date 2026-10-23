@@ -2,6 +2,7 @@
 import { esc, money } from '../util.js';
 import { miniatura } from '../icons.js';
 import { toast, drawer, confirmar, switchHtml, comprimirFoto, debounce } from './ui.js';
+import { abrirImportador } from './importar.js';
 
 const P = window.LunaPromos;
 const POR_PAGINA = 60;
@@ -18,7 +19,8 @@ const VISTAS = [
   ['agotados', 'Agotados', (p) => !p.disponible],
   ['ocultos', 'Ocultos', (p) => !p.visible],
   ['destacados', 'Destacados', (p) => p.destacado],
-  ['licores', 'Licores', (p) => p.es_alcohol]
+  ['licores', 'Licores', (p) => p.es_alcohol],
+  ['granel', 'A granel', (p) => p.unidad === 'kg']
 ];
 
 const categorias = () => [...new Set(cat.productos.map((p) => p.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
@@ -30,8 +32,9 @@ function filtrados() {
   const pasa = VISTAS.find((v) => v[0] === filtro.vista)[2];
   return cat.productos.filter((p) => pasa(p)
     && (!filtro.categoria || p.categoria === filtro.categoria)
-    && (!q || P.norm(`${p.nombre} ${p.marca} ${p.categoria} ${p.presentacion}`).includes(q)))
-    .sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999) || a.nombre.localeCompare(b.nombre, 'es'));
+    && (!q || P.norm(`${p.nombre} ${p.marca} ${p.categoria} ${p.presentacion} ${p.codigo || ''}`).includes(q)))
+    // Los ocultos al final: tras importar, el catálogo anterior no estorba.
+    .sort((a, b) => (b.visible - a.visible) || (a.orden ?? 9999) - (b.orden ?? 9999) || a.nombre.localeCompare(b.nombre, 'es'));
 }
 
 function fila(p) {
@@ -39,9 +42,9 @@ function fila(p) {
   return `<div class="prow${p.visible ? '' : ' hidden-p'}" data-id="${esc(p.id)}">
     ${miniatura(p, 26)}
     <div class="info"><div class="nm">${esc(p.nombre)}</div>
-      <div class="sub">${[p.presentacion, p.marca, p.categoria].filter(Boolean).map(esc).join(' · ')}${p.visible ? '' : ' · <b>Oculto</b>'}${p.es_alcohol ? ' · +18' : ''}</div></div>
-    <label class="price-in${sinPrecio ? ' sinprecio' : ''}"><span>$</span><span class="sr-only">Precio de ${esc(p.nombre)}</span>
-      <input type="text" inputmode="decimal" data-precio value="${sinPrecio ? '' : esc(p.precio)}" placeholder="Sin precio" autocomplete="off"></label>
+      <div class="sub">${[p.unidad === 'kg' ? 'A granel' : p.presentacion, p.marca, p.categoria].filter(Boolean).map(esc).join(' · ')}${p.visible ? '' : ' · <b>Oculto</b>'}${p.es_alcohol ? ' · +18' : ''}</div></div>
+    <label class="price-in${sinPrecio ? ' sinprecio' : ''}${p.unidad === 'kg' ? ' kg' : ''}"><span>$</span><span class="sr-only">Precio${p.unidad === 'kg' ? ' por kilo' : ''} de ${esc(p.nombre)}</span>
+      <input type="text" inputmode="decimal" data-precio value="${sinPrecio ? '' : esc(p.precio)}" placeholder="Sin precio" autocomplete="off">${p.unidad === 'kg' ? '<span class="per" aria-hidden="true">/kg</span>' : ''}</label>
     <div class="sw-wrap">
       ${switchHtml('disponible', p.disponible, '<span class="small">Disponible</span>', { attrs: 'data-sw="disponible"' })}
       ${switchHtml('visible', p.visible, '<span class="small">Visible</span>', { attrs: 'data-sw="visible"' })}
@@ -92,7 +95,8 @@ async function guardar(id, cambios) {
 function editor(p) {
   const nuevo = !p;
   const d = p || { nombre: '', categoria: filtro.categoria || '', marca: '', presentacion: '', precio: null, imagen: '', descripcion: '',
-    visible: true, disponible: true, destacado: false, es_alcohol: filtro.vista === 'licores', temporada: '', orden: null };
+    visible: true, disponible: true, destacado: false, es_alcohol: filtro.vista === 'licores', temporada: '', orden: null,
+    unidad: filtro.vista === 'granel' ? 'kg' : '', codigo: '' };
   const body = `
     <form id="pform" novalidate>
       <div class="fgroup"><h3>Foto</h3>
@@ -111,7 +115,14 @@ function editor(p) {
         <div class="field"><label for="p-nombre">Nombre *</label><input id="p-nombre" name="nombre" value="${esc(d.nombre)}" maxlength="120" required placeholder="Ej. Coca-Cola"></div>
         <div class="row2">
           <div class="field"><label for="p-pres">Presentación</label><input id="p-pres" name="presentacion" value="${esc(d.presentacion)}" maxlength="60" placeholder="Ej. 600 ml"></div>
-          <div class="field"><label for="p-precio">Precio</label><input id="p-precio" name="precio" inputmode="decimal" value="${d.precio ?? ''}" placeholder="Vacío = por confirmar"></div>
+          <div class="field"><label for="p-precio">${d.unidad === 'kg' ? 'Precio por kilo' : 'Precio'}</label><input id="p-precio" name="precio" inputmode="decimal" value="${d.precio ?? ''}" placeholder="Vacío = por confirmar"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="p-unidad">Se vende por</label><select id="p-unidad" name="unidad">
+            <option value="" ${d.unidad === 'kg' ? '' : 'selected'}>Pieza</option>
+            <option value="kg" ${d.unidad === 'kg' ? 'selected' : ''}>Kilo (a granel: ¼, ½, ¾, 1 kg…)</option></select></div>
+          ${d.codigo ? `<div class="field"><label for="p-codigo">Código del punto de venta</label><input id="p-codigo" value="${esc(d.codigo)}" readonly>
+            <p class="small muted" style="margin:6px 0 0">Al importar, el precio y la disponibilidad se toman del punto de venta.</p></div>` : ''}
         </div>
         <div class="row2">
           <div class="field"><label for="p-cat">Categoría *</label><input id="p-cat" name="categoria" value="${esc(d.categoria)}" list="dl-cat" maxlength="60" required placeholder="Elige o escribe una nueva">
@@ -165,7 +176,7 @@ function editor(p) {
     const datos = {
       nombre: f.get('nombre'), presentacion: f.get('presentacion'), precio: String(f.get('precio') || '').replace(/[$,\s]/g, ''),
       categoria: f.get('categoria'), marca: f.get('marca'), descripcion: f.get('descripcion'), imagen: f.get('imagen'),
-      temporada: f.get('temporada'), orden: f.get('orden'),
+      temporada: f.get('temporada'), orden: f.get('orden'), unidad: f.get('unidad'),
       disponible: form.disponible.checked, visible: form.visible.checked, destacado: form.destacado.checked, es_alcohol: form.es_alcohol.checked
     };
     if (String(datos.nombre).trim().length < 2) { form.nombre.focus(); throw new Error('Escribe el nombre del producto.'); }
@@ -189,6 +200,10 @@ function editor(p) {
   }
 
   form.addEventListener('change', async (e) => {
+    if (e.target.id === 'p-unidad') {
+      form.querySelector('label[for="p-precio"]').textContent = e.target.value === 'kg' ? 'Precio por kilo' : 'Precio';
+      return;
+    }
     if (e.target.id !== 'pfile' || !e.target.files[0]) return;
     const btn = form.querySelector('.file-btn');
     const txt = btn.firstChild.textContent;
@@ -275,6 +290,7 @@ function onClick(e) {
     return;
   }
   if (e.target.closest('[data-nuevo]')) { editor(null); return; }
+  if (e.target.closest('[data-importar]')) { abrirImportador(ctx, cat, recargar); return; }
   if (e.target.closest('[data-mas]')) { limite += POR_PAGINA; pintarLista(); return; }
   const row = e.target.closest('.prow[data-id]');
   if (!row) return;
@@ -304,6 +320,30 @@ function onBlur(e) {
   if (e.target.matches('[data-precio]')) guardarPrecio(e.target);
 }
 
+function opcionesCategoria() {
+  return `<option value="">Todas las categorías</option>
+    ${categorias().map((x) => `<option ${x === filtro.categoria ? 'selected' : ''}>${esc(x)}</option>`).join('')}`;
+}
+
+async function recargar() {
+  const vista = main;
+  const nuevo = await ctx.catalogo(true).catch(() => null);
+  if (!nuevo || vista !== main || !main) return;
+  cat = nuevo;
+  limite = POR_PAGINA;
+  main.querySelector('#pcat').innerHTML = opcionesCategoria();
+  pintarAyuda();
+  pintarContadores();
+  pintarLista();
+}
+
+function pintarAyuda() {
+  const conCodigo = cat.productos.some((p) => p.codigo);
+  main.querySelector('#payuda').innerHTML = conCodigo
+    ? '💡 Escribe el precio y presiona <b>Enter</b> para pasar al siguiente: se guarda solo. Para actualizar todos los precios, vuelve a <b>Importar</b> el catálogo del punto de venta.'
+    : '📥 ¿Tienes tu catálogo en el punto de venta? Usa <b>Importar del punto de venta</b> y súbelo completo con precios y existencias. También puedes escribir el precio aquí y presionar <b>Enter</b>.';
+}
+
 export async function render(el, c, params) {
   main = el;
   ctx = c;
@@ -314,14 +354,15 @@ export async function render(el, c, params) {
     <div class="adm-toolbar">
       <label class="search"><span aria-hidden="true">🔎</span><span class="sr-only">Buscar productos</span>
         <input type="search" id="pq" placeholder="Buscar producto, marca o categoría" value="${esc(filtro.q)}"></label>
-      <select id="pcat" aria-label="Filtrar por categoría"><option value="">Todas las categorías</option>
-        ${categorias().map((x) => `<option ${x === filtro.categoria ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
+      <select id="pcat" aria-label="Filtrar por categoría">${opcionesCategoria()}</select>
+      <button class="btn secondary" type="button" data-importar>📥 Importar del punto de venta</button>
       <button class="btn" type="button" data-nuevo>+ Nuevo producto</button>
     </div>
     <div class="seg" id="pvistas" role="toolbar" aria-label="Filtros"></div>
-    <p class="hint-box">💡 Escribe el precio y presiona <b>Enter</b> para pasar al siguiente: se guarda solo. Apaga <b>Disponible</b> cuando algo se acabe.</p>
+    <p class="hint-box" id="payuda"></p>
     <p class="small muted" id="pcount" aria-live="polite"></p>
     <div id="plist"></div>`;
+  pintarAyuda();
   pintarContadores();
   pintarLista();
   main.addEventListener('click', onClick);

@@ -80,6 +80,22 @@ body.admin { background: #f3f1e8; padding-bottom: 0; }
 .price-in.sinprecio { border-color: var(--gold); background: #fffaf0; }
 .price-in.saved { border-color: var(--ok); }
 .price-in.err { border-color: var(--danger); }
+.price-in .per { padding: 0 10px 0 0; font-size: 13px; white-space: nowrap; }
+
+/* ---------- Importar del punto de venta ---------- */
+.imp-kpis { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.imp-list { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; font-size: 14.5px; line-height: 1.45; }
+.imp-det { border-top: 1px solid var(--line); padding: 10px 0 2px; }
+.imp-det summary { cursor: pointer; font-weight: 700; font-size: 14px; color: var(--green); }
+.imp-det[open] summary { margin-bottom: 10px; }
+.imp-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.imp-cats span { background: var(--sage); border-radius: 999px; padding: 5px 11px; font-size: 13px; }
+.imp-tbl td, .imp-tbl th { padding: 8px 10px; font-size: 13px; }
+.imp-det .ctable { display: block; overflow-x: auto; }
+.imp-prog { margin: 4px 0 14px; }
+.imp-prog .bar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.imp-prog .bar span { display: block; height: 100%; width: 0; background: var(--green); transition: width .3s; }
+.imp-prog p { margin: 8px 0 0; }
 .star-btn { background: none; border: 1px solid transparent; border-radius: 8px; width: 40px; height: 40px; font-size: 20px; color: #c9c3ad; cursor: pointer; }
 .star-btn[aria-pressed="true"] { color: var(--gold-2); }
 .star-btn:hover { border-color: var(--line); }
@@ -127,6 +143,7 @@ body.admin { background: #f3f1e8; padding-bottom: 0; }
 .picker label:hover { background: #faf9f4; }
 .picker label input { width: 18px; height: 18px; accent-color: var(--green); flex: none; }
 .picker label small { color: var(--muted); margin-left: auto; text-align: right; }
+.picker .more { padding: 10px 12px; margin: 0; }
 .picker .sel { padding: 8px 12px; font-size: 13px; color: var(--muted); background: #faf9f4; border-radius: 0 0 10px 10px; }
 .preview-box { background: var(--green); color: var(--cream); border-radius: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.6; }
 .preview-box b { color: var(--gold); }

@@ -1,6 +1,6 @@
 // Piezas de interfaz comunes: encabezado, pie, barra del carrito, tarjetas de
 // producto, avisos y verificación de edad.
-import { esc, money, todayMX, qs, qsa, safeUrl, negocio, estadoTienda } from './util.js';
+import { esc, money, todayMX, qs, qsa, safeUrl, negocio, estadoTienda, cantidadTexto } from './util.js';
 import { cart } from './cart.js';
 import { DEMO } from './api.js';
 import { iconoCategoria, iconoSvg, tinte } from './icons.js';
@@ -187,34 +187,41 @@ function refreshCart() {
   }
   qsa('.card[data-id]').forEach((card) => {
     const actions = card.querySelector('.actions');
-    if (actions) actions.innerHTML = actionsHtml(card.dataset.id, card.dataset.available !== '0', card.dataset.name);
+    if (actions) actions.innerHTML = actionsHtml(card.dataset.id, card.dataset.available !== '0', card.dataset.name, card.dataset.unidad);
     card.classList.toggle('in-cart', cart.qty(card.dataset.id) > 0);
   });
 }
 
 // ---------- Tarjetas de producto ----------
 
-function actionsHtml(id, available, name) {
+function actionsHtml(id, available, name, unidad = '') {
   if (!available) return '<button class="btn secondary small block" disabled>Agotado</button>';
   const q = cart.qty(id);
-  if (!q) return `<button class="btn small block" type="button" data-add="${esc(id)}" aria-label="Agregar ${esc(name)}">Agregar</button>`;
-  return `<div class="qty" role="group" aria-label="Cantidad de ${esc(name)}">
-    <button type="button" data-dec="${esc(id)}" aria-label="Quitar uno">−</button>
-    <output aria-live="polite">${q}</output>
-    <button type="button" data-inc="${esc(id)}" aria-label="Agregar uno">+</button>
+  const kg = unidad === 'kg';
+  if (!q) return `<button class="btn small block" type="button" data-add="${esc(id)}" aria-label="Agregar ${esc(name)}">${kg ? 'Agregar ½ kg' : 'Agregar'}</button>`;
+  return `<div class="qty${kg ? ' kg' : ''}" role="group" aria-label="Cantidad de ${esc(name)}">
+    <button type="button" data-dec="${esc(id)}" aria-label="${kg ? 'Quitar ¼ kg' : 'Quitar uno'}">−</button>
+    <output aria-live="polite">${kg ? esc(cantidadTexto({ cantidad: q, unidad })) : q}</output>
+    <button type="button" data-inc="${esc(id)}" aria-label="${kg ? 'Agregar ¼ kg' : 'Agregar uno'}">+</button>
   </div>`;
 }
 
+// Granel: el primer toque agrega ½ kg y cada +/− cambia ¼ kg.
+const pasoDe = (p) => (P.esGranel(p) ? P.PASO_KG : 1);
+const inicialDe = (p) => (P.esGranel(p) ? 0.5 : 1);
+
 export function productCard(p, promos, today = todayMX()) {
   const { promo } = P.bestPromo(p, promos, today, 1);
+  const kg = P.esGranel(p);
+  const porKg = kg ? '<span class="per">/kg</span>' : '';
   let priceHtml;
   if (p.precio === null || p.precio === undefined) {
     priceHtml = '<span class="tbd">Precio por confirmar</span>';
   } else {
     const d = promo && promo.tipo !== 'NXM' ? P.lineDiscount(promo, p.precio, 1) : 0;
     priceHtml = d > 0
-      ? `<strong>${money(p.precio - d)}</strong><s>${money(p.precio)}</s>`
-      : `<strong>${money(p.precio)}</strong>`;
+      ? `<strong>${money(p.precio - d)}${porKg}</strong><s>${money(p.precio)}</s>`
+      : `<strong>${money(p.precio)}${porKg}</strong>`;
   }
   const img = safeUrl(p.imagen) || (DEMO && /^data:image\//.test(p.imagen || '') ? p.imagen : '');
   const icono = iconoCategoria(p.categoria, p.nombre);
@@ -223,7 +230,7 @@ export function productCard(p, promos, today = todayMX()) {
     p.es_alcohol ? '<span class="badge dark">+18</span>' : '',
     !p.disponible ? '<span class="badge red">Agotado</span>' : ''
   ].join('');
-  return `<article class="card${p.disponible ? '' : ' out'}${cart.qty(p.id) ? ' in-cart' : ''}" data-id="${esc(p.id)}" data-name="${esc(p.nombre)}" data-available="${p.disponible ? 1 : 0}">
+  return `<article class="card${p.disponible ? '' : ' out'}${cart.qty(p.id) ? ' in-cart' : ''}" data-id="${esc(p.id)}" data-name="${esc(p.nombre)}" data-available="${p.disponible ? 1 : 0}" data-unidad="${kg ? 'kg' : ''}">
     <div class="thumb mini" style="background:${tinte(p.categoria)}" data-icono="${icono}">
       ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : iconoSvg(icono, 56)}
       <div class="tags">${tags}</div>
@@ -231,11 +238,11 @@ export function productCard(p, promos, today = todayMX()) {
     <div class="body">
       ${p.marca ? `<span class="brand-name">${esc(p.marca)}</span>` : ''}
       <h3>${esc(p.nombre)}</h3>
-      ${p.presentacion ? `<span class="pres">${esc(p.presentacion)}</span>` : ''}
+      ${p.presentacion || kg ? `<span class="pres">${esc(p.presentacion || '')}${kg ? `${p.presentacion ? ' · ' : ''}A granel, por kilo` : ''}</span>` : ''}
       ${promo ? `<span class="promo-line">${esc(promo.titulo)}</span>` : ''}
       <div class="price">${priceHtml}</div>
     </div>
-    <div class="actions">${actionsHtml(p.id, p.disponible, p.nombre)}</div>
+    <div class="actions">${actionsHtml(p.id, p.disponible, p.nombre, kg ? 'kg' : '')}</div>
   </article>`;
 }
 
@@ -249,15 +256,16 @@ document.addEventListener('click', (e) => {
   if (!t) return;
   const id = t.dataset.add || t.dataset.inc || t.dataset.dec;
   const p = productsById()[id];
+  const cuanto = t.dataset.add ? inicialDe(p) : pasoDe(p);
   if (t.dataset.add || t.dataset.inc) {
     if (p && p.es_alcohol && !isAdult()) {
-      ageGate(() => cart.add(id));
+      ageGate(() => cart.add(id, cuanto));
       return;
     }
-    cart.add(id);
-    if (t.dataset.add) toast(`Agregaste ${p ? p.nombre : 'el producto'} a tu pedido`);
+    cart.add(id, cuanto);
+    if (t.dataset.add) toast(`Agregaste ${P.esGranel(p) ? '½ kg de ' : ''}${p ? p.nombre : 'el producto'} a tu pedido`);
   } else {
-    cart.add(id, -1);
+    cart.add(id, -cuanto);
   }
   // Las acciones se vuelven a pintar: devolver el foco al botón equivalente.
   const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);

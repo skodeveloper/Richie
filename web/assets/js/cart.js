@@ -18,9 +18,10 @@ function write(c) {
 export const cart = {
   EVENT,
   qty: (id) => read().items[id] || 0,
+  // Acepta cuartos de kilo para granel; la cotización valida según la unidad.
   set(id, n) {
     const c = read();
-    const q = Math.max(0, Math.min(99, Math.floor(Number(n) || 0)));
+    const q = Math.max(0, Math.min(99, Math.round((Number(n) || 0) * 100) / 100));
     if (q) c.items[id] = q;
     else delete c.items[id];
     write(c);
@@ -32,7 +33,8 @@ export const cart = {
     this.set(id, 0);
   },
   items: () => Object.entries(read().items).map(([id, cantidad]) => ({ id, cantidad })),
-  count: () => Object.values(read().items).reduce((a, b) => a + b, 0),
+  // Un producto a granel cuenta como 1 aunque se pidan fracciones de kilo.
+  count: () => Object.values(read().items).reduce((a, b) => a + (Number.isInteger(b) ? b : 1), 0),
   clear: () => write({ items: {}, edit: null }),
   // Modo "agregar a un pedido ya enviado": el carrito arranca con lo pedido.
   editing: () => read().edit,

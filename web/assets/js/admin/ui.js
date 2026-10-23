@@ -32,7 +32,7 @@ export function toast(msg, type = '') {
   el.textContent = msg;
   el.className = `toast show ${type}`;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = 'toast'; }, type === 'error' ? 4500 : 2600);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, type === 'error' ? 4500 : Math.max(2600, msg.length * 55));
 }
 
 // ---------- Interruptor ----------

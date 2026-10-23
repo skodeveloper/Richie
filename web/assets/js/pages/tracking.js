@@ -2,7 +2,7 @@
 import { api, loadCatalog } from '../api.js';
 import { cart } from '../cart.js';
 import { renderChrome, setCatalog, errorBox, toast, negocioActual, productsById } from '../ui.js';
-import { esc, money, importe, qs, normPhone, prettyDate, ESTADOS, flujoEstados, store } from '../util.js';
+import { esc, money, importe, cantidadTexto, qs, normPhone, prettyDate, ESTADOS, flujoEstados, store } from '../util.js';
 
 renderChrome('seguimiento.html');
 loadCatalog(setCatalog).catch(() => {});
@@ -73,7 +73,7 @@ function pedidoHtml(p) {
     </div>
     <aside class="panel">
       <h3>Tu pedido</h3>
-      ${(p.productos || []).map((l) => `<div class="line"><div><div class="name">${l.cantidad} × ${esc(l.nombre)}</div>
+      ${(p.productos || []).map((l) => `<div class="line"><div><div class="name">${esc(cantidadTexto(l))} ${esc(l.nombre)}</div>
         <div class="meta">${esc(l.presentacion || '')}${l.promo ? ` · <b style="color:#8a5a00">${esc(l.promo)}</b>` : ''}</div></div>
         <div class="right"><strong>${l.total === null ? 'Por confirmar' : money(l.total)}</strong></div></div>`).join('')}
       <dl class="totals" style="margin-top:14px">

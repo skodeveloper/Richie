@@ -46,7 +46,9 @@ loadCatalog((c) => {
   }
 
   const base = c.productos.filter((p) => !p.es_alcohol && p.disponible);
-  const feat = (base.some((p) => p.destacado) ? base.filter((p) => p.destacado) : base).slice(0, 8);
+  // Sin destacados elegidos, primero los que tienen foto.
+  const feat = (base.some((p) => p.destacado) ? base.filter((p) => p.destacado)
+    : base.slice().sort((a, b) => !!b.imagen - !!a.imagen || (a.orden ?? 9999) - (b.orden ?? 9999))).slice(0, 8);
   featEl.innerHTML = `<div class="grid">${feat.map((p) => productCard(p, c.promociones, today)).join('')}</div>`;
 }).catch(() => {
   featEl.innerHTML = '<p class="muted">No pudimos cargar los productos. <a href="tienda.html">Intenta en la tienda</a>.</p>';

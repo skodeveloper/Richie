@@ -166,12 +166,12 @@ test('migración automática: una hoja vieja recibe los ajustes nuevos sin abrir
   const pub = g.get({ action: 'catalog' }).data.config;
   assert.equal(pub.horario_semana, '8:00-23:30');
   assert.ok('whatsapp' in pub);
-  assert.equal(g.props.get('ESTRUCTURA'), '2');
+  assert.equal(g.props.get('ESTRUCTURA'), '3');
 });
 
 test('autorizarPermisos corre sin errores (se usa tras actualizar el código)', () => {
   const g = createGas();
   g.ctx.configuracionInicial();
   g.ctx.autorizarPermisos();
-  assert.equal(g.props.get('ESTRUCTURA'), '2');
+  assert.equal(g.props.get('ESTRUCTURA'), '3');
 });

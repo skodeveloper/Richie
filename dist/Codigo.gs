@@ -20,9 +20,27 @@
  * "aplica_a" acepta, separados por coma: ids de producto, cat:Categoría,
  * marca:Marca o * (todo). Por renglón del carrito se aplica solo la mejor
  * promoción (no se acumulan).
+ *
+ * Productos a granel (unidad = 'kg'): la cantidad son kilos en pasos de ¼
+ * (0.25, 0.5, 0.75, 1…) y el precio es por kilo.
  */
 var LunaPromos = (function () {
   var TIPOS = ['PORCENTAJE', 'PRECIO_ESPECIAL', 'DESCUENTO_PIEZA', 'NXM'];
+
+  var PASO_KG = 0.25;
+  var MAX_KG = 25;
+
+  function esGranel(p) {
+    return !!p && String(p.unidad || '').toLowerCase() === 'kg';
+  }
+
+  // Cantidad válida según la unidad: piezas enteras o kilos en cuartos.
+  function cantidadValida(p, cantidad) {
+    var n = Number(cantidad);
+    if (!isFinite(n)) return 0;
+    if (esGranel(p)) return Math.min(MAX_KG, Math.round(n / PASO_KG) * PASO_KG);
+    return Math.floor(n);
+  }
 
   function round2(n) {
     return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -143,12 +161,13 @@ var LunaPromos = (function () {
 
     (items || []).forEach(function (it) {
       var p = productsById[it.id];
-      var cantidad = Math.floor(Number(it.cantidad));
-      if (!(cantidad > 0)) return;
+      if (!(Number(it.cantidad) > 0)) return;
       if (!p) {
         faltantes.push(String(it.id));
         return;
       }
+      var cantidad = cantidadValida(p, it.cantidad);
+      if (!(cantidad > 0)) return;
       var precio = num(p.precio);
       var importe = precio === null ? null : round2(precio * cantidad);
       var best = bestPromo(p, promos, opts.today, cantidad);
@@ -156,13 +175,14 @@ var LunaPromos = (function () {
       if (precio === null) pendientes = true;
       else subtotal += importe;
       descuento += d;
-      piezas += cantidad;
+      piezas += esGranel(p) ? 1 : cantidad;
       if (truthy(p.es_alcohol)) alcohol = true;
       lines.push({
         id: String(p.id),
         nombre: p.nombre,
         presentacion: p.presentacion || '',
         cantidad: cantidad,
+        unidad: esGranel(p) ? 'kg' : '',
         precio: precio,
         importe: importe,
         descuento: d,
@@ -199,6 +219,10 @@ var LunaPromos = (function () {
 
   return {
     TIPOS: TIPOS,
+    PASO_KG: PASO_KG,
+    MAX_KG: MAX_KG,
+    esGranel: esGranel,
+    cantidadValida: cantidadValida,
     round2: round2,
     truthy: truthy,
     num: num,
@@ -236,7 +260,7 @@ var HOJAS = {
 var COLUMNAS = {
   Config: ['clave', 'valor', 'descripcion'],
   Productos: ['id', 'nombre', 'categoria', 'marca', 'presentacion', 'precio', 'imagen', 'descripcion',
-    'visible', 'disponible', 'destacado', 'es_alcohol', 'temporada', 'orden'],
+    'visible', 'disponible', 'destacado', 'es_alcohol', 'temporada', 'orden', 'unidad', 'codigo'],
   Promociones: ['id', 'titulo', 'descripcion', 'tipo', 'valor', 'lleva', 'paga', 'aplica_a',
     'inicio', 'fin', 'activa', 'imagen'],
   Temporadas: ['id', 'nombre', 'descripcion', 'inicio', 'fin', 'activa', 'imagen'],
@@ -357,6 +381,15 @@ function texto_(v, max) {
   return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max || 200);
 }
 
+// "½ kg Jamón" para granel, "2 × Leche" para piezas.
+var FRACCIONES_ = { 0: '', 0.25: '¼', 0.5: '½', 0.75: '¾' };
+function cantidadTexto_(l) {
+  if (l.unidad !== 'kg') return l.cantidad + ' ×';
+  var enteros = Math.floor(l.cantidad);
+  var frac = FRACCIONES_[Math.round((l.cantidad - enteros) * 100) / 100];
+  return ((enteros ? enteros + (frac ? ' ' : '') : '') + (frac === undefined ? '' : frac) || l.cantidad) + ' kg';
+}
+
 function normalizarTelefono_(v) {
   var d = String(v == null ? '' : v).replace(/\D/g, '');
   if (d.length === 12 && d.indexOf('52') === 0) d = d.slice(2);
@@ -443,6 +476,7 @@ function doPost(e) {
       case 'adminClients': return adminClientes_(body);
       case 'adminChangePassword': return adminCambiarContrasena_(body);
       case 'adminUploadImage': return adminSubirFoto_(body);
+      case 'adminImportProducts': return adminImportarProductos_(body);
       default: throw new ErrorUsuario('Acción no válida.');
     }
   });
@@ -625,20 +659,46 @@ function adminModerarComentario_(body) {
 var CACHE_CATALOGO = 'catalogo_v1';
 
 function obtenerCatalogo_() {
-  var cache = CacheService.getScriptCache();
-  var guardado = cache.get(CACHE_CATALOGO);
+  var guardado = cacheLeer_(CACHE_CATALOGO);
   if (guardado) return JSON.parse(guardado);
   var data = construirCatalogo_();
   try {
-    cache.put(CACHE_CATALOGO, JSON.stringify(data), 120);
+    cacheGuardar_(CACHE_CATALOGO, JSON.stringify(data), 300);
   } catch (e) {
-    // Catálogos de más de 100 KB no caben en caché; se sirven sin ella.
+    // Si la caché falla, el catálogo se sirve directo de la hoja.
   }
   return data;
 }
 
+// CacheService acepta 100 KB por clave: el catálogo grande se guarda en partes.
+var PARTE_CACHE = 45000; // caracteres (con acentos, < 100 KB)
+
+function cacheGuardar_(clave, texto, segundos) {
+  var partes = {};
+  var n = Math.ceil(texto.length / PARTE_CACHE);
+  for (var i = 0; i < n; i++) partes[clave + '_' + i] = texto.substr(i * PARTE_CACHE, PARTE_CACHE);
+  var cache = CacheService.getScriptCache();
+  cache.putAll(partes, segundos);
+  cache.put(clave + '_n', String(n), segundos);
+}
+
+function cacheLeer_(clave) {
+  var cache = CacheService.getScriptCache();
+  var n = Number(cache.get(clave + '_n') || 0);
+  if (!n) return null;
+  var claves = [];
+  for (var i = 0; i < n; i++) claves.push(clave + '_' + i);
+  var partes = cache.getAll(claves);
+  var texto = '';
+  for (var j = 0; j < n; j++) {
+    if (partes[claves[j]] === undefined || partes[claves[j]] === null) return null;
+    texto += partes[claves[j]];
+  }
+  return texto;
+}
+
 function limpiarCacheCatalogo_() {
-  CacheService.getScriptCache().removeAll([CACHE_CATALOGO, 'comentarios_v1']);
+  CacheService.getScriptCache().removeAll([CACHE_CATALOGO + '_n', 'comentarios_v1']);
 }
 
 function construirCatalogo_() {
@@ -677,7 +737,8 @@ function normalizarProducto_(p) {
     destacado: LunaPromos.truthy(p.destacado),
     es_alcohol: LunaPromos.truthy(p.es_alcohol),
     temporada: texto_(p.temporada, 60),
-    orden: LunaPromos.num(p.orden)
+    orden: LunaPromos.num(p.orden),
+    unidad: String(p.unidad || '').toLowerCase() === 'kg' ? 'kg' : ''
   };
 }
 
@@ -793,7 +854,7 @@ function nombreCorto_(nombre) {
  */
 
 var CAMPOS_PRODUCTO = ['nombre', 'categoria', 'marca', 'presentacion', 'precio', 'imagen', 'descripcion',
-  'visible', 'disponible', 'destacado', 'es_alcohol', 'temporada', 'orden'];
+  'visible', 'disponible', 'destacado', 'es_alcohol', 'temporada', 'orden', 'unidad'];
 var AJUSTES_SI_NO = ['email_cliente', 'notificar_comentarios', 'pedidos_activos', 'permitir_recoger',
   'pago_efectivo', 'pago_transferencia'];
 var AJUSTES_MONTO = ['envio_costo', 'envio_gratis_desde', 'pedido_minimo'];
@@ -861,6 +922,7 @@ function conCandado_(fn) {
 function productoAdmin_(r) {
   var p = normalizarProducto_(r);
   p.visible = LunaPromos.truthy(r.visible);
+  p.codigo = texto_(r.codigo, 40);
   return p;
 }
 
@@ -900,6 +962,7 @@ function valorProducto_(k, v, temporadas) {
     case 'precio': return numOVacio_(v, 'El precio', 0, 1000000);
     case 'orden': return numOVacio_(v, 'El orden', -100000, 100000);
     case 'imagen': return urlOVacia_(v);
+    case 'unidad': return String(v || '').toLowerCase() === 'kg' ? 'kg' : '';
     case 'temporada':
       var t = String(v || '').trim();
       if (t && !temporadas[t]) throw new ErrorUsuario('Esa temporada ya no existe. Recarga el panel.');
@@ -974,6 +1037,98 @@ function adminEliminarProducto_(body) {
   conCandado_(function () { eliminarPorId_(HOJAS.PRODUCTOS, body.id); });
   limpiarCacheCatalogo_();
   return { id: body.id };
+}
+
+// ---------- Importación desde el punto de venta ----------
+
+// Upsert por código. Nuevos: se crean completos. Existentes: solo cambian
+// precio, existencia (disponible) y unidad; lo que la tienda editó en el
+// panel (nombre, categoría, foto, visible, destacado…) se respeta.
+function adminImportarProductos_(body) {
+  requerirAdmin_(body);
+  var lista = Array.isArray(body.productos) ? body.productos : [];
+  if (lista.length > 1500) throw new ErrorUsuario('Envía el catálogo en partes de máximo 1500 productos.');
+  var resultado = conCandado_(function () {
+    var sh = hoja_(HOJAS.PRODUCTOS);
+    var headers = encabezados_(sh);
+    var col = {};
+    headers.forEach(function (h, i) { col[h] = i; });
+    if (col.codigo === undefined) throw new Error('Falta la columna codigo');
+    var valores = sh.getDataRange().getValues();
+    var porCodigo = {};
+    var ids = {};
+    var maxOrden = 0;
+    for (var i = 1; i < valores.length; i++) {
+      var cod = String(valores[i][col.codigo] === null ? '' : valores[i][col.codigo]).trim();
+      if (cod) porCodigo[cod] = i;
+      ids[String(valores[i][col.id])] = true;
+      maxOrden = Math.max(maxOrden, Number(valores[i][col.orden]) || 0);
+    }
+    var nuevas = [];
+    var r = { nuevos: 0, actualizados: 0, sin_cambios: 0, ocultados: 0, omitidos: 0 };
+    var hayCambios = false;
+
+    lista.forEach(function (x) {
+      var codigo = texto_(x && x.codigo, 40);
+      var nombre = texto_(x && x.nombre, 120);
+      var precio = LunaPromos.num(x && x.precio);
+      if (!codigo || nombre.length < 2 || (precio !== null && (precio < 0 || precio > 1000000))) { r.omitidos++; return; }
+      var unidad = x.unidad === 'kg' ? 'kg' : '';
+      var disponible = siNo_(x.disponible);
+      var fila = porCodigo[codigo];
+      if (fila === -1) { r.omitidos++; return; } // repetido dentro del mismo archivo
+      if (fila !== undefined) {
+        var row = valores[fila];
+        var cambio = false;
+        [['precio', precio === null ? '' : precio], ['disponible', disponible], ['unidad', unidad]].forEach(function (par) {
+          if (String(row[col[par[0]]]) !== String(par[1])) {
+            row[col[par[0]]] = par[1];
+            cambio = true;
+          }
+        });
+        if (cambio) { r.actualizados++; hayCambios = true; } else { r.sin_cambios++; }
+        porCodigo[codigo] = -1;
+        return;
+      }
+      var nuevo = {
+        id: idUnico_('pos-' + slug_(codigo), ids), nombre: nombre, categoria: texto_(x.categoria, 60) || 'Despensa',
+        marca: texto_(x.marca, 60), presentacion: texto_(x.presentacion, 60), precio: precio === null ? '' : precio,
+        imagen: '', descripcion: '', visible: siNo_(x.visible), disponible: disponible, destacado: 'NO',
+        es_alcohol: siNo_(x.es_alcohol), temporada: '', orden: ++maxOrden, unidad: unidad, codigo: codigo
+      };
+      ids[nuevo.id] = true;
+      porCodigo[codigo] = -1;
+      nuevas.push(filaCompleta_(headers, nuevo));
+      r.nuevos++;
+    });
+
+    // Primera importación: el catálogo anterior (sin código) deja de mostrarse.
+    if (body.ocultar_sin_codigo === true) {
+      for (var j = 1; j < valores.length; j++) {
+        var sinCodigo = !String(valores[j][col.codigo] === null ? '' : valores[j][col.codigo]).trim();
+        if (sinCodigo && LunaPromos.truthy(valores[j][col.visible])) {
+          valores[j][col.visible] = 'NO';
+          r.ocultados++;
+          hayCambios = true;
+        }
+      }
+    }
+    if (hayCambios && valores.length > 1) {
+      sh.getRange(2, 1, valores.length - 1, headers.length)
+        .setValues(valores.slice(1).map(function (fila) { return fila.map(sanitizar_); }));
+    }
+    if (nuevas.length) {
+      var ini = sh.getLastRow() + 1;
+      var faltan = ini + nuevas.length - 1 - sh.getMaxRows();
+      if (faltan > 0) sh.insertRowsAfter(sh.getMaxRows(), faltan);
+      // Los códigos van como texto: "0012" no debe volverse 12 en las filas nuevas.
+      sh.getRange(ini, col.codigo + 1, nuevas.length, 1).setNumberFormat('@');
+      sh.getRange(ini, 1, nuevas.length, headers.length).setValues(nuevas);
+    }
+    return r;
+  });
+  limpiarCacheCatalogo_();
+  return resultado;
 }
 
 // ---------- Promociones y temporadas ----------
@@ -1255,7 +1410,7 @@ function importe_(monto, pendiente) {
 
 function tablaProductosHtml_(c) {
   var filas = c.lines.map(function (l) {
-    return '<tr><td style="padding:6px 8px;border-bottom:1px solid #e3e3d7">' + l.cantidad + ' × ' + esc_(l.nombre) +
+    return '<tr><td style="padding:6px 8px;border-bottom:1px solid #e3e3d7">' + esc_(cantidadTexto_(l)) + ' ' + esc_(l.nombre) +
       (l.presentacion ? ' <small>(' + esc_(l.presentacion) + ')</small>' : '') +
       (l.promo ? ' <b style="color:#8a5a00">' + esc_(l.promo.etiqueta) + '</b>' : '') +
       '</td><td style="padding:6px 8px;border-bottom:1px solid #e3e3d7;text-align:right">' + dinero_(l.total) + '</td></tr>';
@@ -1581,9 +1736,12 @@ function cotizar_(items, entrega, cfg, mayorEdad) {
   catalogo.productos.forEach(function (p) { porId[p.id] = p; });
 
   var limpios = items.map(function (it) {
-    var cantidad = Math.floor(Number(it && it.cantidad));
-    if (!(cantidad >= 1 && cantidad <= MAX_CANTIDAD)) throw new ErrorUsuario('Cantidad no válida.');
-    var p = porId[String(it.id)];
+    var p = porId[String(it && it.id)];
+    var pedida = Number(it && it.cantidad);
+    // Piezas enteras de 1 a 99; granel en cuartos de kilo de ¼ a 25 kg.
+    var cantidad = LunaPromos.cantidadValida(p, pedida);
+    var maximo = LunaPromos.esGranel(p) ? LunaPromos.MAX_KG : MAX_CANTIDAD;
+    if (!(cantidad > 0 && cantidad === pedida && cantidad <= maximo)) throw new ErrorUsuario('Cantidad no válida.');
     if (p && !p.disponible) throw new ErrorUsuario(p.nombre + ' está agotado por ahora. Quítalo de tu pedido.');
     return { id: String(it.id), cantidad: cantidad };
   });
@@ -1608,12 +1766,12 @@ function cotizar_(items, entrega, cfg, mayorEdad) {
 
 function aplicarCotizacion_(destino, c) {
   destino.productos = c.lines.map(function (l) {
-    return l.cantidad + ' × ' + l.nombre + (l.presentacion ? ' (' + l.presentacion + ')' : '') +
+    return cantidadTexto_(l) + ' ' + l.nombre + (l.presentacion ? ' (' + l.presentacion + ')' : '') +
       (l.promo ? ' [' + l.promo.etiqueta + ']' : '');
   }).join('\n');
   destino.productos_json = JSON.stringify(c.lines.map(function (l) {
     return {
-      id: l.id, nombre: l.nombre, presentacion: l.presentacion, cantidad: l.cantidad, precio: l.precio,
+      id: l.id, nombre: l.nombre, presentacion: l.presentacion, cantidad: l.cantidad, unidad: l.unidad, precio: l.precio,
       descuento: l.descuento, total: l.total, promo: l.promo ? l.promo.etiqueta : '', es_alcohol: l.es_alcohol
     };
   }));
@@ -1765,7 +1923,7 @@ function limpiarCache() {
   SpreadsheetApp.getActive().toast('Listo: el sitio ya muestra los cambios.', '🌙 La Luna', 4);
 }
 
-var VERSION_ESTRUCTURA = '2';
+var VERSION_ESTRUCTURA = '3';
 
 // Se llama en cada petición: si el código es más nuevo que la hoja, la
 // actualiza sola (hojas, columnas y ajustes nuevos). Nadie abre el Sheet.
@@ -1827,6 +1985,7 @@ function prepararLibro_(ss) {
   formatoTexto_(ss.getSheetByName(HOJAS.PROMOCIONES), ['inicio', 'fin']);
   formatoTexto_(ss.getSheetByName(HOJAS.TEMPORADAS), ['inicio', 'fin']);
   formatoTexto_(config, ['valor']);
+  formatoTexto_(ss.getSheetByName(HOJAS.PRODUCTOS), ['codigo']);
 
   ['Hoja 1', 'Sheet1', 'Hoja1'].forEach(function (n) {
     var sh = ss.getSheetByName(n);

@@ -46,6 +46,7 @@ const remoteApi = {
   adminModerateComment: (token, datos) => post({ action: 'adminModerateComment', token, ...datos }),
   adminCatalog: (token) => post({ action: 'adminCatalog', token }),
   adminSaveProducts: (token, datos) => post({ action: 'adminSaveProducts', token, ...datos }),
+  adminImportProducts: (token, datos) => post({ action: 'adminImportProducts', token, ...datos }),
   adminDeleteProduct: (token, datos) => post({ action: 'adminDeleteProduct', token, ...datos }),
   adminSavePromo: (token, datos) => post({ action: 'adminSavePromo', token, ...datos }),
   adminDeletePromo: (token, datos) => post({ action: 'adminDeletePromo', token, ...datos }),

@@ -36,7 +36,9 @@ const normProd = (p) => ({
   destacado: P.truthy(p.destacado),
   es_alcohol: P.truthy(p.es_alcohol),
   temporada: p.temporada || '',
-  imagen: p.imagen || ''
+  imagen: p.imagen || '',
+  unidad: p.unidad === 'kg' ? 'kg' : '',
+  codigo: p.codigo || ''
 });
 const normPromo = (p) => ({ ...p, valor: P.num(p.valor), lleva: P.num(p.lleva), paga: P.num(p.paga), activa: P.truthy(p.activa) });
 const normTemp = (t) => ({ ...t, activa: P.truthy(t.activa) });
@@ -72,7 +74,7 @@ async function catalog() {
     hoy,
     demo: true,
     config,
-    productos: d.productos.filter((p) => p.visible && p.id && p.nombre),
+    productos: d.productos.filter((p) => p.visible && p.id && p.nombre).map(({ codigo, ...p }) => p),
     promociones: d.promociones.filter((p) => P.isActive(p, hoy)),
     temporadas: d.temporadas.filter((t) => vigencia(t.activa, t.inicio, t.fin, hoy) === 'ACTIVA')
   };
@@ -84,9 +86,11 @@ async function cotizar(items, entrega, mayorEdad) {
   const porId = Object.fromEntries(cat.productos.map((p) => [p.id, p]));
   if (!Array.isArray(items) || !items.length) fail('Tu pedido está vacío.');
   const limpios = items.map((it) => {
-    const cantidad = Math.floor(Number(it.cantidad));
-    if (!(cantidad >= 1 && cantidad <= 99)) fail('Cantidad no válida.');
     const p = porId[String(it.id)];
+    const pedida = Number(it.cantidad);
+    // Piezas enteras de 1 a 99; granel en cuartos de kilo de ¼ a 25 kg.
+    const cantidad = P.cantidadValida(p, pedida);
+    if (!(cantidad > 0 && cantidad === pedida && cantidad <= (P.esGranel(p) ? P.MAX_KG : 99))) fail('Cantidad no válida.');
     if (p && !p.disponible) fail(`${p.nombre} está agotado por ahora. Quítalo de tu pedido.`);
     return { id: String(it.id), cantidad };
   });
@@ -103,7 +107,7 @@ async function cotizar(items, entrega, mayorEdad) {
 function aplicar(destino, c) {
   destino.productos = c.lines.map((l) => ({
     id: l.id, nombre: l.nombre, presentacion: l.presentacion, cantidad: l.cantidad, precio: l.precio,
-    descuento: l.descuento, total: l.total, promo: l.promo ? l.promo.etiqueta : '', es_alcohol: l.es_alcohol
+    descuento: l.descuento, total: l.total, promo: l.promo ? l.promo.etiqueta : '', es_alcohol: l.es_alcohol, unidad: l.unidad
   }));
   Object.assign(destino, {
     piezas: c.piezas, subtotal: c.subtotal, descuento: c.descuento, envio: c.envio, total: c.total,
@@ -325,7 +329,7 @@ async function adminSaveProducts(token, { productos = [] }) {
       p = {
         id: idUnico(slug(`${c.nombre} ${c.presentacion || ''}`), d.productos), nombre: '', categoria: '', marca: '', presentacion: '',
         precio: null, imagen: '', descripcion: '', visible: true, disponible: true, destacado: false, es_alcohol: false, temporada: '',
-        orden: Math.max(0, ...d.productos.map((x) => x.orden || 0)) + 1
+        orden: Math.max(0, ...d.productos.map((x) => x.orden || 0)) + 1, unidad: '', codigo: ''
       };
     } else {
       p = d.productos.find((x) => x.id === c.id);
@@ -345,6 +349,7 @@ async function adminSaveProducts(token, { productos = [] }) {
       n.temporada = c.temporada || '';
     }
     for (const k of ['visible', 'disponible', 'destacado', 'es_alcohol']) if (c[k] !== undefined) n[k] = P.truthy(siNo(c[k]));
+    if (c.unidad !== undefined) n.unidad = c.unidad === 'kg' ? 'kg' : '';
     if (texto(n.nombre).length < 2) fail('Escribe el nombre del producto.');
     if (!texto(n.categoria)) fail(`Elige una categoría para ${n.nombre}.`);
     if (c.nuevo) d.productos.push(n);
@@ -353,6 +358,50 @@ async function adminSaveProducts(token, { productos = [] }) {
   });
   guardar(d);
   return { productos: guardados };
+}
+
+// Misma lógica que el Apps Script: por código del punto de venta, los
+// existentes solo cambian precio, disponibilidad y unidad.
+async function adminImportProducts(token, { productos = [], ocultar_sin_codigo: ocultar = false }) {
+  await wait(400);
+  auth(token);
+  if (productos.length > 1500) fail('Envía el catálogo en partes de máximo 1500 productos.');
+  const d = await db();
+  const porCodigo = new Map(d.productos.filter((p) => p.codigo).map((p) => [String(p.codigo), p]));
+  const vistos = new Set();
+  const ids = new Set(d.productos.map((p) => p.id));
+  let orden = Math.max(0, ...d.productos.map((x) => x.orden || 0));
+  const r = { nuevos: 0, actualizados: 0, sin_cambios: 0, ocultados: 0, omitidos: 0 };
+  for (const x of productos) {
+    const codigo = texto(x.codigo, 40);
+    const nombre = texto(x.nombre, 120);
+    const precio = P.num(x.precio);
+    if (!codigo || nombre.length < 2 || vistos.has(codigo) || (precio !== null && (precio < 0 || precio > 1000000))) { r.omitidos++; continue; }
+    vistos.add(codigo);
+    const unidad = x.unidad === 'kg' ? 'kg' : '';
+    const disponible = P.truthy(siNo(x.disponible));
+    const p = porCodigo.get(codigo);
+    if (p) {
+      const cambio = p.precio !== precio || p.disponible !== disponible || (p.unidad || '') !== unidad;
+      Object.assign(p, { precio, disponible, unidad });
+      r[cambio ? 'actualizados' : 'sin_cambios']++;
+      continue;
+    }
+    let id = `pos-${slug(codigo)}`;
+    for (let n = 2; ids.has(id); n++) id = `pos-${slug(codigo)}-${n}`;
+    ids.add(id);
+    d.productos.push({
+      id, nombre, categoria: texto(x.categoria, 60) || 'Despensa', marca: texto(x.marca, 60), presentacion: texto(x.presentacion, 60),
+      precio, imagen: '', descripcion: '', visible: P.truthy(siNo(x.visible)), disponible, destacado: false,
+      es_alcohol: P.truthy(siNo(x.es_alcohol)), temporada: '', orden: ++orden, unidad, codigo
+    });
+    r.nuevos++;
+  }
+  if (ocultar === true) {
+    d.productos.forEach((p) => { if (!p.codigo && p.visible) { p.visible = false; r.ocultados++; } });
+  }
+  guardar(d);
+  return r;
 }
 
 async function adminDeleteProduct(token, { id }) {
@@ -508,6 +557,6 @@ export const demoApi = {
   catalog, track, comments, createOrder, updateOrder, addComment, login,
   logout: async () => { sesion = ''; return { ok: true }; },
   adminOrders, adminUpdateOrder, adminComments, adminModerateComment,
-  adminCatalog, adminSaveProducts, adminDeleteProduct, adminSavePromo, adminDeletePromo,
+  adminCatalog, adminSaveProducts, adminImportProducts, adminDeleteProduct, adminSavePromo, adminDeletePromo,
   adminSaveSeason, adminDeleteSeason, adminSaveConfig, adminClients, adminChangePassword, adminUploadImage
 };

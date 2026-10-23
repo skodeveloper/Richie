@@ -280,6 +280,62 @@ process.on('exit', () => { if (servidor) servidor.kill(); });
   await page.waitForSelector('.adm-nav');
   ok(true, 'la contraseña nueva funciona y la vieja no');
 
+  step('Importar catálogo del punto de venta (Excel): vista previa, lotes y sin costo');
+  const { crearXlsx, MUESTRA } = await import('../fixtures/xlsx.mjs');
+  const extra = Array.from({ length: 1700 }, (_, i) => [`GEN${i}`, `Producto Prueba ${i} 500g`, 4321.987, 10 + (i % 50), 0,
+    'Scorpion Abarrote', i % 7 === 0 ? 0 : 5, '-', '-', 'UNIDAD']);
+  const xlsx = crearXlsx([...MUESTRA, ...extra]);
+  const subirCatalogo = async () => {
+    await admin('productos');
+    await page.click('[data-importar]');
+    await page.setInputFiles('#impfile', { name: 'CATALOGO.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: xlsx });
+    await page.waitForSelector('.imp-kpis');
+    return page.$$eval('.imp-kpis .kpi strong', (xs) => xs.map((x) => Number(x.textContent.replace(/,/g, ''))));
+  };
+  let kpis = await subirCatalogo();
+  ok(kpis[0] === 1711, `vista previa: 1,711 nuevos (${kpis[0]})`);
+  ok(!(await page.textContent('.drawer')).includes('4321'), 'el costo no aparece en la vista previa');
+  ok(await page.isChecked('.drawer input[name="ocultar"]'), 'primera vez: ocultar el catálogo anterior viene marcado');
+  await shot(page, 'importar-vista-previa.png');
+  await page.click('.drawer footer .btn:last-child');
+  await page.waitForSelector('.drawer', { state: 'detached', timeout: 30000 });
+  await page.waitForSelector('#pvistas [data-vista="granel"]');
+  await page.waitForTimeout(500);
+  ok(await page.evaluate(() => !localStorage.getItem('luna_demo_db_v2').includes('4321')), 'el costo no se guardó');
+  ok((await page.textContent('[data-vista="granel"] b')).trim() === '1', '1 producto a granel');
+  await page.fill('#pq', 'estrella');
+  await page.waitForTimeout(300);
+  ok((await page.textContent('#plist')).includes('Pastas, arroz y granos'), 'Moderna Estrella va a Pastas, no a Cerveza');
+  await page.fill('#pq', '7501031311309');
+  await page.waitForTimeout(300);
+  ok(await page.$('.prow.hidden-p'), 'cigarros importados ocultos (búsqueda por código)');
+
+  kpis = await subirCatalogo();
+  ok(kpis[0] === 0 && kpis[3] === 1711, 'reimportar el mismo archivo no duplica (0 nuevos, 1,711 sin cambios)');
+  ok(!(await page.$('.drawer input[name="ocultar"]')), 'ya no ofrece ocultar el catálogo anterior');
+  await page.click('.drawer [data-close]');
+
+  step('Tienda con miles de productos: por partes y a granel');
+  await page.goto(B + 'tienda.html');
+  await page.waitForSelector('.grid .card');
+  ok((await page.$$('#results .card')).length === 48, 'primera página: 48 productos');
+  await page.click('[data-mas]');
+  ok((await page.$$('#results .card')).length === 96, '"Ver más" agrega 48');
+  ok(!(await page.textContent('#results')).includes('Importe Ret'), 'importes internos no se ven');
+  await page.evaluate(() => localStorage.removeItem('luna_carrito_v1'));
+  await page.goto(B + 'tienda.html?q=frijol');
+  await page.waitForSelector('.card[data-id="pos-frijol-gr"] [data-add]');
+  ok((await page.textContent('.card[data-id="pos-frijol-gr"]')).includes('/kg'), 'granel muestra precio por kilo');
+  await page.click('.card[data-id="pos-frijol-gr"] [data-add]');
+  ok((await page.textContent('.card[data-id="pos-frijol-gr"] output')).includes('½ kg'), 'primer clic agrega ½ kg');
+  await page.goto(B + 'pedido.html');
+  await page.waitForSelector('.qty.kg');
+  await page.click('.qty.kg [data-inc]');
+  await page.waitForFunction(() => document.querySelector('.qty.kg output').textContent.includes('¾'));
+  ok((await page.textContent('.summary')).includes('25.50'), '¾ kg a $34/kg = $25.50');
+  await shot(page, 'granel-carrito.png');
+  await page.evaluate(() => localStorage.removeItem('luna_carrito_v1'));
+
   step('Celular: sin desbordes horizontales');
   const m = await browser.newContext({ viewport: { width: 375, height: 780 } });
   const mp = await m.newPage();

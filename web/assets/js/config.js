@@ -6,7 +6,7 @@
  * "modo demostración" con datos de ejemplo guardados en el navegador.
  *
  * Lo que cambia seguido (productos, precios, promociones, envío, avisos)
- * NO va aquí: se edita en el Google Sheet.
+ * NO va aquí: se edita desde el panel (admin.html).
  */
 window.LUNA_CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbzWlebgy9hOsqfJdwZvGQ53HQM4LYf_AYZuu_rcGkgjLKUqq-iATwhQJUKlYH8IUMJN/exec',

@@ -51,6 +51,7 @@ function doPost(e) {
       case 'adminClients': return adminClientes_(body);
       case 'adminChangePassword': return adminCambiarContrasena_(body);
       case 'adminUploadImage': return adminSubirFoto_(body);
+      case 'adminImportProducts': return adminImportarProductos_(body);
       default: throw new ErrorUsuario('Acción no válida.');
     }
   });

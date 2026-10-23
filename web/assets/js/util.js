@@ -14,6 +14,15 @@ export function importe(monto, pendiente) {
   return Number(monto) > 0 ? `${money(monto)} + por confirmar` : 'Por confirmar';
 }
 
+// "½ kg" para granel; "2 ×" para piezas. Mismo formato que el servidor.
+const FRACCIONES = { 0: '', 0.25: '¼', 0.5: '½', 0.75: '¾' };
+export function cantidadTexto(l) {
+  if (l.unidad !== 'kg') return `${l.cantidad} ×`;
+  const enteros = Math.floor(l.cantidad);
+  const frac = FRACCIONES[Math.round((l.cantidad - enteros) * 100) / 100];
+  return `${enteros ? `${enteros}${frac ? ' ' : ''}` : ''}${frac ?? ''}` + ' kg';
+}
+
 function parts(date) {
   const p = {};
   new Intl.DateTimeFormat('en-CA', {

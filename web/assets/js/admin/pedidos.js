@@ -1,5 +1,5 @@
 // Sección Pedidos: lista en vivo, cambio de estado, mensajes y ticket para imprimir.
-import { esc, money, importe, prettyDate, ESTADOS, flujoEstados } from '../util.js';
+import { esc, money, importe, cantidadTexto, prettyDate, ESTADOS, flujoEstados } from '../util.js';
 import { toast, debounce } from './ui.js';
 
 let main;
@@ -31,7 +31,7 @@ function tarjeta(p) {
     </summary>
     <div class="inner">
       <div>
-        <ul>${(p.productos || []).map((l) => `<li>${l.cantidad} × ${esc(l.nombre)}${l.presentacion ? ` (${esc(l.presentacion)})` : ''}
+        <ul>${(p.productos || []).map((l) => `<li>${esc(cantidadTexto(l))} ${esc(l.nombre)}${l.presentacion ? ` (${esc(l.presentacion)})` : ''}
           ${l.promo ? ` <b style="color:#8a5a00">${esc(l.promo)}</b>` : ''} — ${l.total === null ? '<i>sin precio</i>' : money(l.total)}</li>`).join('')}</ul>
         <dl class="totals" style="margin-top:12px;max-width:320px">
           <dt>Subtotal</dt><dd>${importe(p.subtotal, sinPrecio)}</dd>

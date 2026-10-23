@@ -18,7 +18,7 @@ var HOJAS = {
 var COLUMNAS = {
   Config: ['clave', 'valor', 'descripcion'],
   Productos: ['id', 'nombre', 'categoria', 'marca', 'presentacion', 'precio', 'imagen', 'descripcion',
-    'visible', 'disponible', 'destacado', 'es_alcohol', 'temporada', 'orden'],
+    'visible', 'disponible', 'destacado', 'es_alcohol', 'temporada', 'orden', 'unidad', 'codigo'],
   Promociones: ['id', 'titulo', 'descripcion', 'tipo', 'valor', 'lleva', 'paga', 'aplica_a',
     'inicio', 'fin', 'activa', 'imagen'],
   Temporadas: ['id', 'nombre', 'descripcion', 'inicio', 'fin', 'activa', 'imagen'],
@@ -137,6 +137,15 @@ function ahora_() {
 
 function texto_(v, max) {
   return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max || 200);
+}
+
+// "½ kg Jamón" para granel, "2 × Leche" para piezas.
+var FRACCIONES_ = { 0: '', 0.25: '¼', 0.5: '½', 0.75: '¾' };
+function cantidadTexto_(l) {
+  if (l.unidad !== 'kg') return l.cantidad + ' ×';
+  var enteros = Math.floor(l.cantidad);
+  var frac = FRACCIONES_[Math.round((l.cantidad - enteros) * 100) / 100];
+  return ((enteros ? enteros + (frac ? ' ' : '') : '') + (frac === undefined ? '' : frac) || l.cantidad) + ' kg';
 }
 
 function normalizarTelefono_(v) {

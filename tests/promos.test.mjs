@@ -10,7 +10,8 @@ const prods = {
   leche: { id: 'leche', nombre: 'Leche', categoria: 'Leche', marca: 'Lala', precio: 30 },
   yog: { id: 'yog', nombre: 'Yogurt', categoria: 'Yogurt y postres', marca: 'Danone', precio: 14 },
   sinprecio: { id: 'sinprecio', nombre: 'Queso', categoria: 'Quesos', marca: '', precio: null },
-  cerveza: { id: 'cerveza', nombre: 'Cerveza', categoria: 'Licores', marca: '', precio: 22, es_alcohol: true }
+  cerveza: { id: 'cerveza', nombre: 'Cerveza', categoria: 'Licores', marca: '', precio: 22, es_alcohol: true },
+  jamon: { id: 'jamon', nombre: 'Jamón', categoria: 'Salchichonería', marca: '', precio: 158, unidad: 'kg' }
 };
 const promo = (o) => ({ id: 'p', titulo: 'P', activa: 'SI', inicio: '', fin: '', ...o });
 
@@ -77,4 +78,20 @@ test('las copias generadas son idénticas a la fuente', () => {
   for (const copy of ['../web/assets/js/promos.js', '../apps-script/Promos.gs']) {
     assert.ok(readFileSync(new URL(copy, import.meta.url), 'utf8').endsWith(src), `${copy} desactualizado: corre npm run build`);
   }
+});
+
+test('granel: kilos en cuartos, precio por kilo y piezas por renglón', () => {
+  assert.equal(P.cantidadValida(prods.jamon, 0.3), 0.25);
+  assert.equal(P.cantidadValida(prods.jamon, 0.6), 0.5);
+  assert.equal(P.cantidadValida(prods.jamon, 99), P.MAX_KG);
+  assert.equal(P.cantidadValida(prods.leche, 2.7), 2);
+  const q = P.quote([{ id: 'jamon', cantidad: 0.75 }, { id: 'leche', cantidad: 2 }], prods, [], { entrega: 'recoger' });
+  const j = q.lines.find((l) => l.id === 'jamon');
+  assert.equal(j.cantidad, 0.75);
+  assert.equal(j.unidad, 'kg');
+  assert.equal(j.importe, 118.5);
+  assert.equal(q.piezas, 3, '1 renglón a granel + 2 piezas');
+  assert.equal(P.quote([{ id: 'jamon', cantidad: 0.1 }], prods, [], {}).lines.length, 0, 'menos de ¼ kg no cuenta');
+  const promo = { id: 'p', titulo: 'P', activa: 'SI', tipo: 'PORCENTAJE', valor: 10, aplica_a: 'jamon' };
+  assert.equal(P.quote([{ id: 'jamon', cantidad: 0.5 }], prods, [promo], { today: '2026-10-23' }).descuento, 7.9);
 });

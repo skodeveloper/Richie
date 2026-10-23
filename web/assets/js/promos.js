@@ -16,9 +16,27 @@
  * "aplica_a" acepta, separados por coma: ids de producto, cat:Categoría,
  * marca:Marca o * (todo). Por renglón del carrito se aplica solo la mejor
  * promoción (no se acumulan).
+ *
+ * Productos a granel (unidad = 'kg'): la cantidad son kilos en pasos de ¼
+ * (0.25, 0.5, 0.75, 1…) y el precio es por kilo.
  */
 var LunaPromos = (function () {
   var TIPOS = ['PORCENTAJE', 'PRECIO_ESPECIAL', 'DESCUENTO_PIEZA', 'NXM'];
+
+  var PASO_KG = 0.25;
+  var MAX_KG = 25;
+
+  function esGranel(p) {
+    return !!p && String(p.unidad || '').toLowerCase() === 'kg';
+  }
+
+  // Cantidad válida según la unidad: piezas enteras o kilos en cuartos.
+  function cantidadValida(p, cantidad) {
+    var n = Number(cantidad);
+    if (!isFinite(n)) return 0;
+    if (esGranel(p)) return Math.min(MAX_KG, Math.round(n / PASO_KG) * PASO_KG);
+    return Math.floor(n);
+  }
 
   function round2(n) {
     return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -139,12 +157,13 @@ var LunaPromos = (function () {
 
     (items || []).forEach(function (it) {
       var p = productsById[it.id];
-      var cantidad = Math.floor(Number(it.cantidad));
-      if (!(cantidad > 0)) return;
+      if (!(Number(it.cantidad) > 0)) return;
       if (!p) {
         faltantes.push(String(it.id));
         return;
       }
+      var cantidad = cantidadValida(p, it.cantidad);
+      if (!(cantidad > 0)) return;
       var precio = num(p.precio);
       var importe = precio === null ? null : round2(precio * cantidad);
       var best = bestPromo(p, promos, opts.today, cantidad);
@@ -152,13 +171,14 @@ var LunaPromos = (function () {
       if (precio === null) pendientes = true;
       else subtotal += importe;
       descuento += d;
-      piezas += cantidad;
+      piezas += esGranel(p) ? 1 : cantidad;
       if (truthy(p.es_alcohol)) alcohol = true;
       lines.push({
         id: String(p.id),
         nombre: p.nombre,
         presentacion: p.presentacion || '',
         cantidad: cantidad,
+        unidad: esGranel(p) ? 'kg' : '',
         precio: precio,
         importe: importe,
         descuento: d,
@@ -195,6 +215,10 @@ var LunaPromos = (function () {
 
   return {
     TIPOS: TIPOS,
+    PASO_KG: PASO_KG,
+    MAX_KG: MAX_KG,
+    esGranel: esGranel,
+    cantidadValida: cantidadValida,
     round2: round2,
     truthy: truthy,
     num: num,

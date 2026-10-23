@@ -9,7 +9,7 @@
  * NO va aquí: se edita desde el panel (admin.html).
  */
 window.LUNA_CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzWlebgy9hOsqfJdwZvGQ53HQM4LYf_AYZuu_rcGkgjLKUqq-iATwhQJUKlYH8IUMJN/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbycM_XzC6QjBFoF_DSsshaa0f8IRlzBd2qbZgbZcJd-d6nHJfYUNAY62OUsz_obGelQ/exec',
 
   negocio: {
     nombre: 'Abarrotes La Luna',

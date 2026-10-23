@@ -11,19 +11,20 @@ const seasonEl = qs('#home-season');
 const featEl = qs('#home-featured');
 featEl.innerHTML = `<div class="grid">${skeletons(4)}</div>`;
 
-// Sin destacados elegidos: uno de cada categoría (con precio y, si hay, con
-// foto), mezclados con una semilla del día para que la portada cambie.
+// Sin destacados elegidos: uno de cada categoría (primero los que tienen
+// precio y foto), mezclados con una semilla del día para que la portada cambie.
 function variados(base, cuantos, semilla) {
   let h = 0;
   for (const ch of semilla) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const azar = (p) => { let x = h; for (const ch of p.id) x = (x * 33 + ch.charCodeAt(0)) >>> 0; return x; };
   const grupos = new Map();
-  base.filter((p) => p.precio !== null && p.precio !== undefined).forEach((p) => {
+  const conPrecio = (p) => p.precio !== null && p.precio !== undefined;
+  base.forEach((p) => {
     if (!grupos.has(p.categoria)) grupos.set(p.categoria, []);
     grupos.get(p.categoria).push(p);
   });
   const filas = [...grupos.values()].sort((a, b) => b.length - a.length)
-    .map((g) => g.sort((a, b) => !!b.imagen - !!a.imagen || azar(a) - azar(b)));
+    .map((g) => g.sort((a, b) => conPrecio(b) - conPrecio(a) || !!b.imagen - !!a.imagen || azar(a) - azar(b)));
   const out = [];
   for (let i = 0; out.length < cuantos && filas.some((g) => g[i]); i++) {
     filas.forEach((g) => { if (g[i] && out.length < cuantos) out.push(g[i]); });

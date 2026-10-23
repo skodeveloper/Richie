@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opiniones · Abarrotes La Luna</title>
+<meta name="description" content="Opiniones de clientes de Abarrotes La Luna. Cuéntanos cómo te atendimos.">
+<link rel="canonical" href="https://abarroteslaluna.com.mx/comentarios.html">
+<meta name="theme-color" content="#163e35">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_MX">
+<meta property="og:site_name" content="Abarrotes La Luna">
+<meta property="og:title" content="Opiniones · Abarrotes La Luna">
+<meta property="og:description" content="Opiniones de clientes de Abarrotes La Luna. Cuéntanos cómo te atendimos.">
+<meta property="og:url" content="https://abarroteslaluna.com.mx/comentarios.html">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/styles.css">
+<script defer src="assets/js/config.js"></script>
+<script defer src="assets/js/promos.js"></script>
+<script type="module" src="assets/js/pages/comments.js"></script>
+</head>
+<body>
+<a class="sr-only" href="#main">Saltar al contenido</a>
+<main id="main">
+<section class="page-hero">
+  <div class="wrap">
+    <p class="eyebrow">Tu opinión nos importa</p>
+    <h1>Opiniones</h1>
+    <p>Cuéntanos cómo te fue con tu compra o qué te gustaría encontrar en la tienda.</p>
+  </div>
+</section>
+<section class="section tight">
+  <div class="wrap info-grid" style="align-items:start">
+    <form class="panel" id="comment-form" novalidate>
+      <h3>Deja tu comentario</h3>
+      <div id="comment-msg" aria-live="polite"></div>
+      <div class="field"><label for="c-nombre">Nombre</label><input id="c-nombre" name="nombre" maxlength="60" autocomplete="name" required></div>
+      <fieldset class="field" style="border:0;padding:0;margin:0 0 16px">
+        <legend class="label">Calificación</legend>
+        <div class="star-input">
+          <input type="radio" id="s5" name="calificacion" value="5"><label for="s5" title="5 estrellas">★</label>
+          <input type="radio" id="s4" name="calificacion" value="4"><label for="s4" title="4 estrellas">★</label>
+          <input type="radio" id="s3" name="calificacion" value="3"><label for="s3" title="3 estrellas">★</label>
+          <input type="radio" id="s2" name="calificacion" value="2"><label for="s2" title="2 estrellas">★</label>
+          <input type="radio" id="s1" name="calificacion" value="1"><label for="s1" title="1 estrella">★</label>
+        </div>
+      </fieldset>
+      <div class="field"><label for="c-comentario">Comentario</label><textarea id="c-comentario" name="comentario" maxlength="800" required></textarea></div>
+      <div class="field"><label for="c-folio">Folio de tu pedido (opcional)</label><input id="c-folio" name="folio" maxlength="12" placeholder="LL-XXXXX"></div>
+      <label class="check" style="margin-bottom:16px"><input type="checkbox" name="publicable" checked><span>Se puede publicar en el sitio (solo tu nombre y la inicial del apellido).</span></label>
+      <div class="hp" aria-hidden="true"><label>No llenar <input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <button class="btn" type="submit">Enviar comentario</button>
+      <p class="small muted">Revisamos los comentarios antes de publicarlos.</p>
+    </form>
+    <div>
+      <div id="rating" style="display:flex;gap:12px;align-items:center;margin-bottom:16px"></div>
+      <div class="reviews" id="reviews" style="grid-template-columns:1fr"></div>
+    </div>
+  </div>
+</section>
+</main>
+<noscript><div class="wrap"><div class="alert warn">Activa JavaScript para ver el catálogo y hacer pedidos. También puedes llamarnos al <a href="tel:+525555170726">55 5517 0726</a>.</div></div></noscript>
+</body>
+</html>

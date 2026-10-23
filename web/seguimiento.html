@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seguimiento de pedido · Abarrotes La Luna</title>
+<meta name="description" content="Consulta el estado de tu pedido de Abarrotes La Luna con tu folio o tu teléfono.">
+<link rel="canonical" href="https://abarroteslaluna.com.mx/seguimiento.html">
+<meta name="theme-color" content="#163e35">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_MX">
+<meta property="og:site_name" content="Abarrotes La Luna">
+<meta property="og:title" content="Seguimiento de pedido · Abarrotes La Luna">
+<meta property="og:description" content="Consulta el estado de tu pedido de Abarrotes La Luna con tu folio o tu teléfono.">
+<meta property="og:url" content="https://abarroteslaluna.com.mx/seguimiento.html">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/styles.css">
+<script defer src="assets/js/config.js"></script>
+<script defer src="assets/js/promos.js"></script>
+<script type="module" src="assets/js/pages/tracking.js"></script>
+</head>
+<body>
+<a class="sr-only" href="#main">Saltar al contenido</a>
+<main id="main">
+<section class="page-hero">
+  <div class="wrap">
+    <p class="eyebrow">Tu pedido, paso a paso</p>
+    <h1>Seguimiento</h1>
+    <p>Escribe tu folio (ej. LL-7KQ2M) o el teléfono con el que pediste.</p>
+  </div>
+</section>
+<section class="section tight">
+  <div class="wrap">
+    <form class="track-form panel" id="track-form" novalidate>
+      <div class="field" style="margin:0"><label for="t-folio">Folio</label><input id="t-folio" name="folio" placeholder="LL-XXXXX" autocomplete="off" autocapitalize="characters" maxlength="12"></div>
+      <div class="field" style="margin:0"><label for="t-tel">Teléfono</label><input id="t-tel" name="telefono" type="tel" inputmode="tel" placeholder="10 dígitos" autocomplete="tel" maxlength="16"></div>
+      <button class="btn" type="submit">Buscar</button>
+    </form>
+    <div id="track-result" aria-live="polite"></div>
+    <div id="recent"></div>
+  </div>
+</section>
+</main>
+<noscript><div class="wrap"><div class="alert warn">Activa JavaScript para ver el catálogo y hacer pedidos. También puedes llamarnos al <a href="tel:+525555170726">55 5517 0726</a>.</div></div></noscript>
+</body>
+</html>

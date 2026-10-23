@@ -3,6 +3,7 @@ import { esc, money } from '../util.js';
 import { miniatura } from '../icons.js';
 import { toast, drawer, confirmar, switchHtml, comprimirFoto, debounce } from './ui.js';
 import { abrirImportador } from './importar.js';
+import { terminos, puntaje } from '../buscar.js';
 
 const P = window.LunaPromos;
 const POR_PAGINA = 60;
@@ -13,14 +14,16 @@ let cat;
 let filtro = { q: '', categoria: '', vista: 'todos' };
 let limite = POR_PAGINA;
 
+// Los filtros de trabajo cuentan solo lo que se ve en la tienda; lo oculto
+// (catálogo anterior, cigarros, insumos) vive en "Ocultos".
 const VISTAS = [
   ['todos', 'Todos', () => true],
-  ['sinprecio', 'Sin precio', (p) => p.precio === null || p.precio === undefined],
-  ['agotados', 'Agotados', (p) => !p.disponible],
+  ['sinprecio', 'Sin precio', (p) => p.visible && (p.precio === null || p.precio === undefined)],
+  ['agotados', 'Agotados', (p) => p.visible && !p.disponible],
   ['ocultos', 'Ocultos', (p) => !p.visible],
-  ['destacados', 'Destacados', (p) => p.destacado],
-  ['licores', 'Licores', (p) => p.es_alcohol],
-  ['granel', 'A granel', (p) => p.unidad === 'kg']
+  ['destacados', 'Destacados', (p) => p.visible && p.destacado],
+  ['licores', 'Licores', (p) => p.visible && p.es_alcohol],
+  ['granel', 'A granel', (p) => p.visible && p.unidad === 'kg']
 ];
 
 const categorias = () => [...new Set(cat.productos.map((p) => p.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
@@ -28,11 +31,11 @@ const marcas = () => [...new Set(cat.productos.map((p) => p.marca).filter(Boolea
 const esTabaco = (p) => /cigarr|tabaco/.test(P.norm(p.categoria));
 
 function filtrados() {
-  const q = P.norm(filtro.q);
+  const ts = terminos(filtro.q);
   const pasa = VISTAS.find((v) => v[0] === filtro.vista)[2];
   return cat.productos.filter((p) => pasa(p)
     && (!filtro.categoria || p.categoria === filtro.categoria)
-    && (!q || P.norm(`${p.nombre} ${p.marca} ${p.categoria} ${p.presentacion} ${p.codigo || ''}`).includes(q)))
+    && (!ts.length || puntaje(p, ts) > 0))
     // Los ocultos al final: tras importar, el catálogo anterior no estorba.
     .sort((a, b) => (b.visible - a.visible) || (a.orden ?? 9999) - (b.orden ?? 9999) || a.nombre.localeCompare(b.nombre, 'es'));
 }
@@ -41,7 +44,7 @@ function fila(p) {
   const sinPrecio = p.precio === null || p.precio === undefined;
   return `<div class="prow${p.visible ? '' : ' hidden-p'}" data-id="${esc(p.id)}">
     ${miniatura(p, 26)}
-    <div class="info"><div class="nm">${esc(p.nombre)}</div>
+    <div class="info"><button class="nm" type="button" data-edit title="Editar ${esc(p.nombre)}">${esc(p.nombre)}</button>
       <div class="sub">${[p.unidad === 'kg' ? 'A granel' : p.presentacion, p.marca, p.categoria].filter(Boolean).map(esc).join(' · ')}${p.visible ? '' : ' · <b>Oculto</b>'}${p.es_alcohol ? ' · +18' : ''}</div></div>
     <label class="price-in${sinPrecio ? ' sinprecio' : ''}${p.unidad === 'kg' ? ' kg' : ''}"><span>$</span><span class="sr-only">Precio${p.unidad === 'kg' ? ' por kilo' : ''} de ${esc(p.nombre)}</span>
       <input type="text" inputmode="decimal" data-precio value="${sinPrecio ? '' : esc(p.precio)}" placeholder="Sin precio" autocomplete="off">${p.unidad === 'kg' ? '<span class="per" aria-hidden="true">/kg</span>' : ''}</label>
@@ -49,7 +52,7 @@ function fila(p) {
       ${switchHtml('disponible', p.disponible, '<span class="small">Disponible</span>', { attrs: 'data-sw="disponible"' })}
       ${switchHtml('visible', p.visible, '<span class="small">Visible</span>', { attrs: 'data-sw="visible"' })}
       <button class="star-btn" type="button" data-star aria-pressed="${p.destacado}" title="Destacar en la portada" aria-label="Destacar ${esc(p.nombre)} en la portada">★</button>
-      <button class="btn small secondary" type="button" data-edit>Editar</button>
+      <button class="btn small secondary edit-btn" type="button" data-edit tabindex="-1" aria-hidden="true">Editar</button>
     </div>
   </div>`;
 }
@@ -340,7 +343,7 @@ async function recargar() {
 function pintarAyuda() {
   const conCodigo = cat.productos.some((p) => p.codigo);
   main.querySelector('#payuda').innerHTML = conCodigo
-    ? '💡 Escribe el precio y presiona <b>Enter</b> para pasar al siguiente: se guarda solo. Para actualizar todos los precios, vuelve a <b>Importar</b> el catálogo del punto de venta.'
+    ? '💡 Escribe el precio y presiona <b>Enter</b> para pasar al siguiente: se guarda solo. Toca el <b>nombre</b> para editar foto, categoría y más. Para actualizar todos los precios, vuelve a <b>Importar</b> el catálogo del punto de venta.'
     : '📥 ¿Tienes tu catálogo en el punto de venta? Usa <b>Importar del punto de venta</b> y súbelo completo con precios y existencias. También puedes escribir el precio aquí y presionar <b>Enter</b>.';
 }
 
@@ -353,9 +356,9 @@ export async function render(el, c, params) {
   main.innerHTML = `
     <div class="adm-toolbar">
       <label class="search"><span aria-hidden="true">🔎</span><span class="sr-only">Buscar productos</span>
-        <input type="search" id="pq" placeholder="Buscar producto, marca o categoría" value="${esc(filtro.q)}"></label>
+        <input type="search" id="pq" placeholder="Buscar nombre, marca o código" value="${esc(filtro.q)}"></label>
       <select id="pcat" aria-label="Filtrar por categoría">${opcionesCategoria()}</select>
-      <button class="btn secondary" type="button" data-importar>📥 Importar del punto de venta</button>
+      <button class="btn secondary" type="button" data-importar>📥 Importar<span class="solo-ancho"> del punto de venta</span></button>
       <button class="btn" type="button" data-nuevo>+ Nuevo producto</button>
     </div>
     <div class="seg" id="pvistas" role="toolbar" aria-label="Filtros"></div>

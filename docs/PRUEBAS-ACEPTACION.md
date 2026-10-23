@@ -77,6 +77,11 @@ Marca cada prueba con ✅ o ❌ y anota lo que veas. Hazlas en el sitio real (de
 | H4 | Las categorías muestran cuántos productos tienen | |
 | H5 | Menú dice “Seguir pedido” y el botón “Carrito” (antes ambos decían “Mi pedido”) | |
 | H6 | Si la tienda está cerrada, el carrito avisa que el pedido se atiende al abrir | |
+| H7 | Portada: el buscador “Busca: leche, pan…” lleva a la tienda con los resultados | |
+| H8 | Tienda: “Explora por categoría” con íconos; al tocar una se filtra y sube a los productos | |
+| H9 | Buscar “leche lala” o “frijoles” encuentra los productos aunque el orden o el plural no coincidan | |
+| H10 | Sin resultados: dice qué se buscó y ofrece preguntar por WhatsApp con el texto ya escrito | |
+| H11 | En celular los productos se ven en lista compacta (4–5 por pantalla) y el paso del pedido dice su nombre | |
 
 ## I. Catálogo del punto de venta y granel
 | # | Qué haces | Qué debe pasar | ✅/❌ |

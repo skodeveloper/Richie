@@ -1,6 +1,6 @@
 // Portada: promociones vigentes, temporada, destacados y opiniones.
 import { api, loadCatalog } from '../api.js';
-import { renderChrome, setCatalog, productCard, skeletons, negocioActual } from '../ui.js';
+import { renderChrome, setCatalog, productCard, skeletons, negocioActual, categoriaTiles } from '../ui.js';
 import { esc, qs, todayMX, prettyDate, parseHorario, horaTexto } from '../util.js';
 
 const P = window.LunaPromos;
@@ -10,6 +10,26 @@ const promosEl = qs('#home-promos');
 const seasonEl = qs('#home-season');
 const featEl = qs('#home-featured');
 featEl.innerHTML = `<div class="grid">${skeletons(4)}</div>`;
+
+// Sin destacados elegidos: uno de cada categoría (con precio y, si hay, con
+// foto), mezclados con una semilla del día para que la portada cambie.
+function variados(base, cuantos, semilla) {
+  let h = 0;
+  for (const ch of semilla) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const azar = (p) => { let x = h; for (const ch of p.id) x = (x * 33 + ch.charCodeAt(0)) >>> 0; return x; };
+  const grupos = new Map();
+  base.filter((p) => p.precio !== null && p.precio !== undefined).forEach((p) => {
+    if (!grupos.has(p.categoria)) grupos.set(p.categoria, []);
+    grupos.get(p.categoria).push(p);
+  });
+  const filas = [...grupos.values()].sort((a, b) => b.length - a.length)
+    .map((g) => g.sort((a, b) => !!b.imagen - !!a.imagen || azar(a) - azar(b)));
+  const out = [];
+  for (let i = 0; out.length < cuantos && filas.some((g) => g[i]); i++) {
+    filas.forEach((g) => { if (g[i] && out.length < cuantos) out.push(g[i]); });
+  }
+  return out;
+}
 
 function pintarContacto() {
   const n = negocioActual();
@@ -46,10 +66,17 @@ loadCatalog((c) => {
   }
 
   const base = c.productos.filter((p) => !p.es_alcohol && p.disponible);
-  // Sin destacados elegidos, primero los que tienen foto.
-  const feat = (base.some((p) => p.destacado) ? base.filter((p) => p.destacado)
-    : base.slice().sort((a, b) => !!b.imagen - !!a.imagen || (a.orden ?? 9999) - (b.orden ?? 9999))).slice(0, 8);
+  const hayDestacados = base.some((p) => p.destacado);
+  const feat = hayDestacados ? base.filter((p) => p.destacado).slice(0, 10) : variados(base, 10, today);
+  qs('#home-featured-title').textContent = hayDestacados ? 'Lo más pedido' : 'Recomendados de hoy';
   featEl.innerHTML = `<div class="grid">${feat.map((p) => productCard(p, c.promociones, today)).join('')}</div>`;
+
+  // Categorías con más productos (las de licores viven en su propia página).
+  const conteo = new Map();
+  c.productos.filter((p) => !p.es_alcohol).forEach((p) => conteo.set(p.categoria, (conteo.get(p.categoria) || 0) + 1));
+  const cats = [...conteo.entries()].sort((a, b) => b[1] - a[1]);
+  qs('#home-cats').hidden = cats.length < 4;
+  qs('#home-cat-tiles').innerHTML = categoriaTiles(cats.slice(0, 12), { href: (cat) => `tienda.html?cat=${encodeURIComponent(cat)}` });
 }).catch(() => {
   featEl.innerHTML = '<p class="muted">No pudimos cargar los productos. <a href="tienda.html">Intenta en la tienda</a>.</p>';
 });

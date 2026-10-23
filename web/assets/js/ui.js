@@ -230,20 +230,35 @@ export function productCard(p, promos, today = todayMX()) {
     p.es_alcohol ? '<span class="badge dark">+18</span>' : '',
     !p.disponible ? '<span class="badge red">Agotado</span>' : ''
   ].join('');
-  return `<article class="card${p.disponible ? '' : ' out'}${cart.qty(p.id) ? ' in-cart' : ''}" data-id="${esc(p.id)}" data-name="${esc(p.nombre)}" data-available="${p.disponible ? 1 : 0}" data-unidad="${kg ? 'kg' : ''}">
+  // Las etiquetas van en el cuerpo: sobre la foto en cuadrícula y arriba del
+  // nombre en la lista del celular.
+  return `<article class="card${p.disponible ? '' : ' out'}${img ? '' : ' noimg'}${cart.qty(p.id) ? ' in-cart' : ''}" data-id="${esc(p.id)}" data-name="${esc(p.nombre)}" data-available="${p.disponible ? 1 : 0}" data-unidad="${kg ? 'kg' : ''}">
     <div class="thumb mini" style="background:${tinte(p.categoria)}" data-icono="${icono}">
       ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : iconoSvg(icono, 56)}
-      <div class="tags">${tags}</div>
     </div>
     <div class="body">
+      ${tags ? `<div class="tags">${tags}</div>` : ''}
       ${p.marca ? `<span class="brand-name">${esc(p.marca)}</span>` : ''}
       <h3>${esc(p.nombre)}</h3>
       ${p.presentacion || kg ? `<span class="pres">${esc(p.presentacion || '')}${kg ? `${p.presentacion ? ' · ' : ''}A granel, por kilo` : ''}</span>` : ''}
       ${promo ? `<span class="promo-line">${esc(promo.titulo)}</span>` : ''}
-      <div class="price">${priceHtml}</div>
+      <div class="foot">
+        <div class="price">${priceHtml}</div>
+        <div class="actions">${actionsHtml(p.id, p.disponible, p.nombre, kg ? 'kg' : '')}</div>
+      </div>
     </div>
-    <div class="actions">${actionsHtml(p.id, p.disponible, p.nombre, kg ? 'kg' : '')}</div>
   </article>`;
+}
+
+// Mosaico de categorías con ícono y cuántos productos tiene.
+// Con href son enlaces (portada); sin href, botones que filtran (tienda).
+export function categoriaTiles(cats, { href = null } = {}) {
+  return cats.map(([c, n]) => {
+    const dentro = `<span class="ic" style="background:${tinte(c)}">${iconoSvg(iconoCategoria(c), 24)}</span>
+      <span>${esc(c)}<small>${n.toLocaleString('es-MX')} ${n === 1 ? 'producto' : 'productos'}</small></span>`;
+    return href ? `<a class="cat-tile" href="${esc(href(c))}">${dentro}</a>`
+      : `<button class="cat-tile" type="button" data-cat="${esc(c)}">${dentro}</button>`;
+  }).join('');
 }
 
 export function skeletons(n = 8) {

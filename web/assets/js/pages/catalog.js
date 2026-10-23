@@ -1,8 +1,10 @@
 // Páginas de catálogo: tienda, promociones, temporada y licores.
 // La vista se elige con <body data-view="...">.
 import { loadCatalog } from '../api.js';
-import { renderChrome, setCatalog, productCard, skeletons, ageGate, isAdult, errorBox } from '../ui.js';
+import { renderChrome, setCatalog, productCard, skeletons, ageGate, isAdult, errorBox, categoriaTiles, negocioActual } from '../ui.js';
 import { esc, qs, todayMX, prettyDate } from '../util.js';
+import { buscar } from '../buscar.js';
+import { iconoSvg } from '../icons.js';
 
 const P = window.LunaPromos;
 const view = document.body.dataset.view;
@@ -21,10 +23,15 @@ const byOrder = (a, b) => (b.disponible - a.disponible) || (a.orden ?? 9999) - (
 const PAGINA = 48;
 const paginas = new Map();
 let nGrid = 0;
+// Al llegar datos frescos se repinta: se conservan los productos que ya se
+// mostraron con "Ver más" para que la lista no se encoja de golpe.
+let conservar = 0;
 function grid(list, promos, paso = PAGINA) {
   const id = `g${++nGrid}`;
-  paginas.set(id, { list, promos, paso, mostrados: Math.min(paso, list.length) });
-  return `<div class="grid" data-g="${id}">${list.slice(0, paso).map((p) => productCard(p, promos)).join('')}</div>${botonMas(id)}`;
+  const primero = Math.min(Math.max(paso, conservar), list.length);
+  conservar = 0;
+  paginas.set(id, { list, promos, paso, mostrados: primero });
+  return `<div class="grid" data-g="${id}">${list.slice(0, primero).map((p) => productCard(p, promos)).join('')}</div>${botonMas(id)}`;
 }
 function botonMas(id) {
   const g = paginas.get(id);
@@ -45,11 +52,17 @@ document.addEventListener('click', (e) => {
   if (nuevo) nuevo.focus({ preventScroll: true });
 });
 
-const textos = new WeakMap();
-const textoDe = (p) => {
-  if (!textos.has(p)) textos.set(p, P.norm(`${p.nombre} ${p.marca} ${p.categoria} ${p.presentacion}`));
-  return textos.get(p);
-};
+const n = (x) => x.toLocaleString('es-MX');
+const productosTxt = (k) => `${n(k)} ${k === 1 ? 'producto' : 'productos'}`;
+
+// Sin resultados: invitar a preguntar por WhatsApp con el texto ya escrito.
+function sinResultados(q) {
+  const wa = negocioActual().whatsapp;
+  const pregunta = q ? `Hola, ¿tienen ${q}?` : 'Hola, busco un producto';
+  return empty(q ? `No encontramos “${esc(q)}”` : 'Sin productos aquí',
+    'Prueba con otra palabra (por ejemplo, la marca) o pregúntanos: seguro lo tenemos en mostrador.',
+    wa ? `<a class="btn ask" href="https://wa.me/52${esc(wa)}?text=${encodeURIComponent(pregunta)}" target="_blank" rel="noopener">Preguntar por WhatsApp</a>` : '');
+}
 
 function empty(title, text, cta = '<a class="btn" href="tienda.html">Ver la tienda</a>') {
   return `<div class="empty"><h3>${title}</h3><p class="muted">${text}</p>${cta}</div>`;
@@ -62,20 +75,24 @@ function syncUrl() {
   history.replaceState(null, '', location.pathname + (u.toString() ? `?${u}` : ''));
 }
 
-function renderFiltered(c, productos, { allLabel = 'Todo', extraChips = '' } = {}) {
-  const cats = [...new Set(productos.map((p) => p.categoria))].sort((a, b) => a.localeCompare(b, 'es'));
+function renderFiltered(c, productos, { allLabel = 'Todo', extraChips = '', extraTiles = '', placeholder = 'Buscar: leche, yogurt, queso…', aviso = '' } = {}) {
+  const conteo = new Map();
+  productos.forEach((p) => conteo.set(p.categoria, (conteo.get(p.categoria) || 0) + 1));
+  const cats = [...conteo.keys()].sort((a, b) => a.localeCompare(b, 'es'));
   const destacados = productos.some((p) => p.destacado);
+  // Con muchas categorías, la entrada a la tienda es un mosaico para explorar.
+  const mosaico = cats.length > 6;
   if (state.cat && state.cat !== '__destacados' && !cats.includes(state.cat)) state.cat = '';
   const cuenta = (value) => (value === '' ? productos.length : value === '__destacados'
-    ? productos.filter((p) => p.destacado).length : productos.filter((p) => p.categoria === value).length);
-  const chip = (value, label) => `<button class="chip" type="button" data-cat="${esc(value)}" aria-pressed="${state.cat === value}">${esc(label)}<span class="n">${cuenta(value)}</span></button>`;
+    ? productos.filter((p) => p.destacado).length : conteo.get(value) || 0);
+  const chip = (value, label) => `<button class="chip" type="button" data-cat="${esc(value)}" aria-pressed="${state.cat === value}">${esc(label)}<span class="n">${n(cuenta(value))}</span></button>`;
 
-  root.innerHTML = `
+  root.innerHTML = `${aviso}
     <div class="toolbar">
       <label class="search">
         <span aria-hidden="true">🔎</span>
         <span class="sr-only">Buscar productos</span>
-        <input type="search" id="q" placeholder="Buscar: leche, yogurt, queso…" value="${esc(state.q)}" autocomplete="off">
+        <input type="search" id="q" placeholder="${esc(placeholder)}" value="${esc(state.q)}" autocomplete="off" enterkeyhint="search">
       </label>
       <div class="chips scroll" role="toolbar" aria-label="Categorías">
         ${chip('', allLabel)}
@@ -84,30 +101,54 @@ function renderFiltered(c, productos, { allLabel = 'Todo', extraChips = '' } = {
         ${extraChips}
       </div>
     </div>
-    <p class="muted small" id="count" aria-live="polite"></p>
+    <div id="browse"></div>
+    <div class="results-head"><p class="muted small" id="count" aria-live="polite"></p></div>
     <div id="results"></div>`;
+
+  const chips = root.querySelector('.chips');
+  const marcarChip = () => {
+    root.querySelectorAll('.chips .chip[data-cat]').forEach((x) => {
+      const activo = x.dataset.cat === state.cat;
+      x.setAttribute('aria-pressed', String(activo));
+      // El chip elegido queda a la vista dentro del carrusel.
+      if (activo) chips.scrollTo({ left: x.offsetLeft - chips.clientWidth / 2 + x.clientWidth / 2, behavior: 'smooth' });
+    });
+  };
 
   const paint = () => {
     paginas.clear();
-    const q = P.norm(state.q);
-    const list = productos.filter((p) => {
-      if (state.cat === '__destacados' && !p.destacado) return false;
-      if (state.cat && state.cat !== '__destacados' && p.categoria !== state.cat) return false;
-      return !q || textoDe(p).includes(q);
-    }).sort(byOrder);
-    qs('#count').textContent = `${list.length} ${list.length === 1 ? 'producto' : 'productos'}`;
-    qs('#results').innerHTML = list.length
-      ? grid(list, c.promociones)
-      : empty('Sin resultados', 'No encontramos productos con ese filtro. Si no lo ves, pregúntanos por teléfono: seguro lo tenemos en tienda.', '');
+    const filtrados = productos.filter((p) => {
+      if (state.cat === '__destacados') return p.destacado;
+      return !state.cat || p.categoria === state.cat;
+    });
+    const list = buscar(filtrados, state.q, byOrder);
+    const explorar = mosaico && !state.cat && !state.q;
+    qs('#browse').innerHTML = explorar ? `<section class="browse" aria-labelledby="h-cats">
+        <div class="browse-head"><h2 id="h-cats">Explora por categoría</h2></div>
+        <div class="cat-tiles">${categoriaTiles(cats.map((x) => [x, conteo.get(x)]).filter(([, k]) => k >= 3).sort((a, b) => b[1] - a[1]))}${extraTiles}</div>
+      </section>
+      <div class="browse-head"><h2>Todos los productos</h2></div>` : '';
+    const donde = state.cat === '__destacados' ? ' destacados' : state.cat ? ` en ${state.cat}` : '';
+    qs('#count').innerHTML = state.q
+      ? `${productosTxt(list.length)} para “${esc(state.q)}”${esc(donde)}`
+      : `${productosTxt(list.length)}${esc(donde)}`;
+    qs('#results').innerHTML = list.length ? grid(list, c.promociones) : sinResultados(state.q);
     syncUrl();
   };
 
+  const subirAResultados = () => {
+    const y = root.getBoundingClientRect().top + window.scrollY - 72;
+    if (window.scrollY > y) window.scrollTo({ top: y, behavior: 'smooth' });
+  };
+
   root.onclick = (e) => {
-    const b = e.target.closest('[data-cat]');
-    if (!b || !b.matches('.chip')) return;
+    const b = e.target.closest('.chip[data-cat], .cat-tile[data-cat]');
+    if (!b) return;
     state.cat = b.dataset.cat;
-    root.querySelectorAll('.chips .chip[data-cat]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    if (state.q) { state.q = ''; qs('#q').value = ''; }
+    marcarChip();
     paint();
+    subirAResultados();
   };
   let timer;
   qs('#q').oninput = (e) => {
@@ -117,19 +158,25 @@ function renderFiltered(c, productos, { allLabel = 'Todo', extraChips = '' } = {
       // Al buscar se busca en toda la tienda, no solo en la categoría elegida.
       if (state.q && state.cat) {
         state.cat = '';
-        root.querySelectorAll('.chips .chip[data-cat]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.cat === '')));
+        marcarChip();
       }
       paint();
     }, 150);
   };
+  // "Buscar" en el teclado del celular: cierra el teclado para ver resultados.
+  qs('#q').onkeydown = (e) => { if (e.key === 'Enter') e.target.blur(); };
   paint();
+  if (state.cat) marcarChip();
 }
 
 function renderTienda(c) {
   const productos = c.productos.filter((p) => !p.es_alcohol);
   const hayLicores = c.productos.some((p) => p.es_alcohol);
+  const licores = c.productos.filter((p) => p.es_alcohol).length;
   renderFiltered(c, productos, {
-    extraChips: hayLicores ? '<a class="chip" href="licores.html">🍷 Licores</a>' : ''
+    extraChips: hayLicores ? '<a class="chip" href="licores.html">🍷 Licores</a>' : '',
+    extraTiles: hayLicores ? `<a class="cat-tile" href="licores.html"><span class="ic" style="background:#ece3cf">${iconoSvg('licor', 24)}</span>
+      <span>Licores +18<small>${n(licores)} productos</small></span></a>` : ''
   });
 }
 
@@ -187,8 +234,7 @@ function renderLicores(c) {
     root.innerHTML = legal + empty('Lista de licores en preparación', 'Muy pronto podrás ver aquí cervezas, vinos y destilados. Pregúntanos por teléfono por lo que buscas.');
     return;
   }
-  root.insertAdjacentHTML('beforebegin', legal);
-  renderFiltered(c, productos, { allLabel: 'Todos' });
+  renderFiltered(c, productos, { allLabel: 'Todos', placeholder: 'Buscar: tequila, cerveza, vino…', aviso: legal });
 }
 
 const RENDER = { tienda: renderTienda, promociones: renderPromos, temporada: renderTemporada, licores: renderLicores };
@@ -200,8 +246,9 @@ function start() {
     // La segunda llamada trae datos frescos: solo repintar si cambió algo.
     const sig = JSON.stringify([c.productos, c.promociones, c.temporadas, c.config]);
     if (sig === last) return;
+    const vista = [...paginas.values()][0];
+    if (last && vista) conservar = vista.mostrados;
     last = sig;
-    document.querySelectorAll('.legal').forEach((el) => el.remove());
     root.onclick = null;
     RENDER[view](c);
   }).catch((e) => {

@@ -62,7 +62,8 @@ function stepperHtml() {
     const cls = i === step ? 'current' : i <= maxStep ? 'done' : '';
     return `<li class="${cls}"><button type="button" data-goto="${i}" ${i <= maxStep && i !== step ? '' : 'disabled'}
       ${i === step ? 'aria-current="step"' : ''}>${esc(n)}</button></li>`;
-  }).join('')}</ol>`;
+  }).join('')}</ol>
+  <p class="step-caption" aria-hidden="true">Paso ${step + 1} de ${pasos().length} · <b>${esc(pasos()[step])}</b></p>`;
 }
 
 function field(name, label, { type = 'text', hint = '', attrs = '', value = datos[name] } = {}) {
